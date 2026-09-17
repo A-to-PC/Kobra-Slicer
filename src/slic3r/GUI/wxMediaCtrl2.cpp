@@ -104,7 +104,7 @@ wxMediaCtrl2::wxMediaCtrl2(wxWindow *parent)
     if (m_native_wayland && is_gstreamer_feature_available("gtksink"))
         configure_wayland_gstreamer_liveview_path();
     else if (m_native_wayland) {
-        m_gtk_sink_error = _L("Native Wayland liveview requires the GStreamer GTK video sink. Please install the gtksink plugin for GStreamer, then restart OrcaSlicer.");
+        m_gtk_sink_error = _L("Native Wayland liveview requires the GStreamer GTK video sink. Please install the gtksink plugin for GStreamer, then restart Kobra Slicer.");
         BOOST_LOG_TRIVIAL(warning) << "wxMediaCtrl2: native Wayland liveview disabled because GStreamer gtksink is unavailable";
     }
 #endif
@@ -388,7 +388,7 @@ void wxMediaCtrl2::Load(wxURI url)
                 });
             } else {
                 CallAfter([] {
-                    wxMessageBox(_L("Missing BambuSource component registered for media playing! Please re-install OrcaSlicer or seek community help."), _L("Error"), wxOK);
+                    wxMessageBox(_L("Missing BambuSource component registered for media playing! Please re-install Kobra Slicer or seek community help."), _L("Error"), wxOK);
                 });
             }
             m_error = clsid != CLSID_BAMBU_SOURCE ? 101 : path.empty() ? 102 : 103;

@@ -215,7 +215,10 @@ endif ()
 
 if (MSVC)
     if (SLIC3R_MSVC_COMPILE_PARALLEL AND NOT IS_CLANG_CL)
-           add_compile_options(/MP)
+           # Capped at 4: unbounded /MP lets too many cl.exe instances share one PCH at once,
+           # which exhausts virtual memory for the PCH (C1076/C3859) on the GUI project's large
+           # shared header -- proven fix from the AnycubicSlicerNext build saga.
+           add_compile_options(/MP4)
     endif ()
     # /bigobj (Increase Number of Sections in .Obj file)
     # error C3859: virtual memory range for PCH exceeded; please recompile with a command line option of '-Zm90' or greater

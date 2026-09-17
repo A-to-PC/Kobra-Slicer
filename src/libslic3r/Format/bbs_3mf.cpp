@@ -176,7 +176,14 @@ const std::string BBL_CREATION_DATE_TAG             = "CreationDate";
 // Orca: BBL current version
 const std::string BBL_APPLICATION_TAG               = "Application";
 // OrcaSlicer version tag
-const std::string ORCASLICER_TAG                    = "OrcaSlicer";
+// Renamed from "OrcaSlicer" 16/09/2026: this tag gets written into the 3D model metadata of
+// every file we export, including uploads to the K3M, whose firmware checks for an
+// "AnycubicSlicer"-prefixed producer signature (confirmed from the real firmware binary).
+// Symmetric with the one read-side check below, so our own exported files still round-trip
+// correctly on re-import -- the only real tradeoff is that a genuine old OrcaSlicer-authored
+// file's 2.3.1-alpha migration fix (the only other use of this tag) won't fire on import,
+// since the real old files still literally say "OrcaSlicer" and won't match this renamed value.
+const std::string ORCASLICER_TAG                    = "AnycubicSlicer";
 const std::string BBL_MAKERLAB_TAG                  = "MakerLab";
 const std::string BBL_MAKERLAB_VERSION_TAG          = "MakerLabVersion";
 
@@ -8167,7 +8174,11 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
         stream << "  <" << SLICE_HEADER_TAG << ">\n";
         stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-BBL-Client-Type"    << "\" " << VALUE_ATTR << "=\"" << "slicer" << "\"/>\n";
         stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-BBL-Client-Version" << "\" " << VALUE_ATTR << "=\"" << convert_to_full_version(SLIC3R_VERSION) << "\"/>\n";
-        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "OrcaSlicer-Version" << "\" " << VALUE_ATTR << "=\"" << SoftFever_VERSION << "\"/>\n";
+        // Real key checked in a real Slicer Next slice_info.config would need confirming against
+        // an actual sample -- renamed to match the same "AnycubicSlicer" prefix already confirmed
+        // required by the firmware's gcode-header check (16/09/2026), on the reasoning that a
+        // producer-recognition check in one place is likely mirrored in another, not proven here.
+        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "AnycubicSlicer-Version" << "\" " << VALUE_ATTR << "=\"" << SoftFever_VERSION << "\"/>\n";
         stream << "  </" << SLICE_HEADER_TAG << ">\n";
 
         for (unsigned int i = 0; i < (unsigned int)plate_data_list.size(); ++i)

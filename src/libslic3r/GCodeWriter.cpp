@@ -235,14 +235,15 @@ std::string GCodeWriter::set_acceleration_internal(Acceleration type, unsigned i
         gcode << (separate_travel ? "M202 X" : "M201 X") << acceleration << " Y" << acceleration;
     else if (FLAVOR_IS(gcfRepRapFirmware) || FLAVOR_IS(gcfMarlinFirmware))
         gcode << (separate_travel ? "M204 T" : "M204 P") << acceleration;
-    else if (FLAVOR_IS(gcfKlipper)) {
-        gcode << "SET_VELOCITY_LIMIT ACCEL=" << acceleration;
-        if (this->config.accel_to_decel_enable) {
-            gcode << " ACCEL_TO_DECEL=" << acceleration * this->config.accel_to_decel_factor / 100;
-            if (GCodeWriter::full_gcode_comment)
-                gcode << " ; adjust ACCEL_TO_DECEL";
-        }
-    }
+    // Deliberately NOT using SET_VELOCITY_LIMIT ACCEL= for Klipper flavor here, unlike jerk
+    // below. Real captured traffic from Anycubic's own Slicer Next (which also declares
+    // gcode_flavor=klipper) shows it emits plain "M204 S<accel>" for every per-feature
+    // acceleration change and reserves the real Klipper macro for jerk only (SET_VELOCITY_LIMIT
+    // SQUARE_CORNER_VELOCITY=, fired once since jerk rarely changes) -- confirmed 16/09/2026 by
+    // diffing a real working Slicer Next export against this codebase's own klipper-flavor
+    // output (7,600+ SET_VELOCITY_LIMIT ACCEL= calls vs Slicer Next's zero). The K3M's firmware
+    // rejects an upload with that many Klipper macro calls ("Invalid gcode file"); falling
+    // through to the plain M204 branch below matches what the real printer actually accepts.
     else
         gcode << "M204 S" << acceleration;
 
@@ -314,18 +315,23 @@ std::string GCodeWriter::set_accel_and_jerk(unsigned int acceleration, double je
     // Clamp the acceleration to the allowed maximum.
     if (m_max_acceleration > 0 && acceleration > m_max_acceleration)
         acceleration = m_max_acceleration;
-    
-    bool is_empty = true;
+
     std::ostringstream gcode;
-    gcode << "SET_VELOCITY_LIMIT";
+
+    // Acceleration deliberately uses plain M204 S<accel> rather than the real Klipper
+    // SET_VELOCITY_LIMIT ACCEL= macro -- see the matching comment in
+    // set_acceleration_internal() for why: acceleration changes per feature (walls/infill/
+    // travel), so the real Klipper macro would fire thousands of times a print, which is what
+    // was overloading the K3M's firmware. Jerk barely changes within a print, so it keeps using
+    // the real Klipper command below, matching Anycubic's own Slicer Next output exactly.
     if (acceleration != 0 && acceleration != m_last_acceleration) {
-        gcode << " ACCEL=" << acceleration;
-        if (this->config.accel_to_decel_enable) {
-            gcode << " ACCEL_TO_DECEL=" << acceleration * this->config.accel_to_decel_factor / 100;
-        }
+        gcode << "M204 S" << acceleration;
+        if (GCodeWriter::full_gcode_comment)
+            gcode << " ; adjust acceleration";
+        gcode << "\n";
         m_last_acceleration = acceleration;
-        is_empty = false;
     }
+
     // Clamp the jerk to the allowed maximum.
     if (m_max_jerk_x > 0 && jerk > m_max_jerk_x)
         jerk = m_max_jerk_x;
@@ -333,17 +339,12 @@ std::string GCodeWriter::set_accel_and_jerk(unsigned int acceleration, double je
         jerk = m_max_jerk_y;
 
     if (jerk > 0.01 && !is_approx(jerk, m_last_jerk)) {
-        gcode << " SQUARE_CORNER_VELOCITY=" << jerk;
+        gcode << "SET_VELOCITY_LIMIT SQUARE_CORNER_VELOCITY=" << jerk;
+        if (GCodeWriter::full_gcode_comment)
+            gcode << " ; adjust jerk";
+        gcode << "\n";
         m_last_jerk = jerk;
-        is_empty = false;
     }
-
-    if(is_empty)
-        return std::string();
-
-    if (GCodeWriter::full_gcode_comment)
-        gcode << " ; adjust VELOCITY_LIMIT(accel/jerk)";
-    gcode << "\n";
 
     return gcode.str();
 

@@ -60,7 +60,7 @@ ReleaseNoteDialog::ReleaseNoteDialog(Plater *plater /*= nullptr*/)
 
     m_sizer_body->Add(0, 0, 0, wxLEFT, FromDIP(38));
 
-    auto sm = create_scaled_bitmap("OrcaSlicer", nullptr,  70);
+    auto sm = create_scaled_bitmap("KobraSlicer", nullptr,  70);
     auto brand = new wxStaticBitmap(this, wxID_ANY, sm, wxDefaultPosition, wxSize(FromDIP(70), FromDIP(70)));
 
     m_sizer_body->Add(brand, 0, wxALL, 0);
@@ -127,7 +127,7 @@ UpdatePluginDialog::UpdatePluginDialog(wxWindow* parent /*= nullptr*/)
 
 
 
-    auto sm = create_scaled_bitmap("OrcaSlicer", nullptr, 55);
+    auto sm = create_scaled_bitmap("KobraSlicer", nullptr, 55);
     auto brand = new wxStaticBitmap(this, wxID_ANY, sm, wxDefaultPosition, wxSize(FromDIP(55), FromDIP(55)));
 
     wxBoxSizer* m_sizer_right = new wxBoxSizer(wxVERTICAL);
@@ -247,7 +247,7 @@ UpdateVersionDialog::UpdateVersionDialog(wxWindow *parent)
     wxBoxSizer *m_sizer_top  = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer *m_sizer_desc = new wxBoxSizer(wxVERTICAL);
 
-    auto sm    = create_scaled_bitmap("OrcaSlicer", nullptr, 64);
+    auto sm    = create_scaled_bitmap("KobraSlicer", nullptr, 64);
     m_brand = new wxStaticBitmap(this, wxID_ANY, sm, wxDefaultPosition, FromDIP(wxSize(64, 64)));
 
     m_text_up_info = new Label(this, Label::Head_14, wxEmptyString, LB_AUTO_WRAP);
@@ -483,7 +483,7 @@ void UpdateVersionDialog::update_version_info(wxString release_note, wxString ve
     //m_simplebook_release_note->SetMaxSize(wxSize(FromDIP(560), FromDIP(430)));
     m_simplebook_release_note->SetSelection(1);
     if (is_running_in_msix())
-        m_text_up_info->SetLabel(wxString::Format(_L("New version available: %s. Please update OrcaSlicer from the Microsoft Store."), version));
+        m_text_up_info->SetLabel(wxString::Format(_L("New version available: %s. Please update Kobra Slicer."), version));
     else
         m_text_up_info->SetLabel(wxString::Format(_L("Click to download new version in default browser: %s"), version));
     auto data_buf_in = release_note.utf8_str();

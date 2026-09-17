@@ -49,3 +49,7 @@ internal_docs/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Local build tooling / logs (not part of the source tree)
+/tools/cmake-3.31.6-windows-x86_64/
+build_deps_log.txt

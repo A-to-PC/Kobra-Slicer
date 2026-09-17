@@ -35,7 +35,7 @@
 	"thumbnails_internal_switch": "1",
 	"adaptive_bed_mesh_margin": "0",
 	"auxiliary_fan": "0",
-	"bbl_use_printhost": "0",
+	"bbl_use_printhost": "1",
 	"bed_custom_model": "",
 	"bed_custom_texture": "",
 	"bed_exclude_area": [
@@ -59,7 +59,7 @@
 	"bed_mesh_max": "0,0",
 	"bed_mesh_min": "0,0",
 	"bed_mesh_probe_distance": "0,0",
-	"before_layer_change_gcode": "; BEFORE_LAYER_CHANGE [layer_num] @ [layer_z]mm",
+	"before_layer_change_gcode": "G92 E0\n; BEFORE_LAYER_CHANGE [layer_num] @ [layer_z]mm",
 	"best_object_pos": "0.5,0.5",
 	"change_extrusion_role_gcode": "",
 	"change_filament_gcode": "; FLUSH_START\n;;; M400 P0\nT[next_extruder] ; change extruder\n; 1\n;;; G1 E-2 F2400\n;;; G1 Z{max(toolchange_z+0.6, 5.0)} F600\n;;; G1 X445.0 F12000\n;;; G1 E-5 F600\n;;; G1 X472.7 F600\n;;; M400 P3530\n;;; G1 E-1 F600\n;;; G1 Z{max(toolchange_z+2.6, 7.0)}  F600\n;;; G1 X445 F18000\n;;; G1 X457 F1200\n;;; G1 X445 F1200\n;;; G1 E2 F300\n;;; M400 P31050\n;;; M400 P17510\n; 2\n;;; G1 X445 F18000\n;;; G1 X457 F1200\n;;; G1 X445 F1200\n;;; G1 E2 F300\n;;; M400 P0\n;;; G1 X420 F6000\n;;; M400 P0\n;;; G1 X445 F18000\n;;; G1 X457 F1200\n;;; G1 X445 F1200\n;;; G1 E2 F300\n;;; M400 P0\n; 3.1\n;;; M106 S255\n;;; G1 X42 Y430.5 Z-0.8 F9600\n;;; G1 X46 Y430.5 Z1 F9600\n;;; G1 X98 Y430.5 Z1 F9600\n;;; G1 X102 Y430.5 Z-0.8 F9600\n;;; G1 X102 Y428 Z-0.8 F9600\n;;; G1 X98 Y428 Z1 F9600\n;;; G1 X48 Y428 Z1 F9600\n;;; G1 X42 Y428 Z-0.8 F9600\n; 3.2\n;;; G1 X42 Y430.5 Z-0.8 F9600\n;;; G1 X46 Y430.5 Z1 F9600\n;;; G1 X98 Y430.5 Z1 F9600\n;;; G1 X102 Y430.5 Z-0.8 F9600\n;;; G1 X102 Y428 Z-0.8 F9600\n;;; G1 X98 Y428 Z1 F9600\n;;; G1 X48 Y428 Z1 F9600\n;;; G1 X42 Y428 Z-0.8 F9600\n; 3.3\n;;; G1 X42 Y430.5 Z-0.8 F9600\n;;; G1 X46 Y430.5 Z1 F9600\n;;; G1 X98 Y430.5 Z1 F9600\n;;; G1 X102 Y430.5 Z-0.8 F9600\n;;; G1 X102 Y428 Z-0.8 F9600\n;;; G1 X98 Y428 Z1 F9600\n;;; G1 X48 Y428 Z1 F9600\n;;; G1 X42 Y428 Z-0.8 F9600\n;;; G1 Z{toolchange_z}\n;;; M400 P0\n; FLUSH_END",
@@ -86,7 +86,8 @@
 	"fan_speedup_time": "0",
 	"head_wrap_detect_zone": [],
 	"high_current_on_filament_swap": "0",
-	"host_type": "octoprint",
+	"host_type": "anycubiclink",
+	"use_3mf": "1",
 	"layer_change_gcode": "; AFTER_LAYER_CHANGE [layer_num] @ [layer_z]mm",
 	"long_retractions_when_cut": [
 		"0"

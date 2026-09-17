@@ -1187,7 +1187,7 @@ static void load_downward_settings_list_from_config(std::string config_file, std
 int CLI::run(int argc, char **argv)
 {
     // Mark the main thread for the debugger and for runtime checks.
-    set_current_thread_name("orcaslicer_main");
+    set_current_thread_name("kobraslicer_main");
     // Save the thread ID of the main thread.
     save_main_thread_id();
 
@@ -1404,7 +1404,7 @@ int CLI::run(int argc, char **argv)
         //BBS: remove GCodeViewer as separate APP logic
         //params.start_as_gcodeviewer = start_as_gcodeviewer;
 
-        BOOST_LOG_TRIVIAL(info) << "begin to launch OrcaSlicer GUI soon";
+        BOOST_LOG_TRIVIAL(info) << "begin to launch Kobra Slicer GUI soon";
         return Slic3r::GUI::GUI_Run(params);
 #else // SLIC3R_GUI
         // No GUI support. Just print out a help.
@@ -1428,7 +1428,7 @@ int CLI::run(int argc, char **argv)
     }
 
     global_begin_time = (long long)Slic3r::Utils::get_current_time_utc();
-    BOOST_LOG_TRIVIAL(warning) << boost::format("cli mode, Current OrcaSlicer Version %1%")%SoftFever_VERSION;
+    BOOST_LOG_TRIVIAL(warning) << boost::format("cli mode, Current Kobra Slicer Version %1%")%SoftFever_VERSION;
 
     //BBS: add plate data related logic
     PlateDataPtrs plate_data_src;
@@ -7125,17 +7125,17 @@ bool CLI::setup(int argc, char **argv)
     detect_platform();
 
 #ifdef WIN32
-    // Notify user that a blacklisted DLL was injected into OrcaSlicer process (for example Nahimic, see GH #5573).
-    // We hope that if a DLL is being injected into a OrcaSlicer process, it happens at the very start of the application,
+    // Notify user that a blacklisted DLL was injected into Kobra Slicer process (for example Nahimic, see GH #5573).
+    // We hope that if a DLL is being injected into a Kobra Slicer process, it happens at the very start of the application,
     // thus we shall detect them now.
     if (BlacklistedLibraryCheck::get_instance().perform_check()) {
-        std::wstring text = L"Following DLLs have been injected into the OrcaSlicer process:\n\n";
+        std::wstring text = L"Following DLLs have been injected into the Kobra Slicer process:\n\n";
         text += BlacklistedLibraryCheck::get_instance().get_blacklisted_string();
         text += L"\n\n"
-                L"OrcaSlicer is known to not run correctly with these DLLs injected. "
+                L"Kobra Slicer is known to not run correctly with these DLLs injected. "
                 L"We suggest stopping or uninstalling these services if you experience "
-                L"crashes or unexpected behaviour while using OrcaSlicer.\n"
-                L"For example, ASUS Sonic Studio injects a Nahimic driver, which makes OrcaSlicer "
+                L"crashes or unexpected behaviour while using Kobra Slicer.\n"
+                L"For example, ASUS Sonic Studio injects a Nahimic driver, which makes Kobra Slicer "
                 L"to crash on a secondary monitor";
         MessageBoxW(NULL, text.c_str(), L"Warning"/*L"Incopatible library found"*/, MB_OK);
     }
@@ -7505,7 +7505,7 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 extern "C" {
-    __declspec(dllexport) int __stdcall orcaslicer_main(int argc, wchar_t **argv)
+    __declspec(dllexport) int __stdcall kobraslicer_main(int argc, wchar_t **argv)
     {
         // Convert wchar_t arguments to UTF8.
         std::vector<std::string> 	argv_narrow;
@@ -7537,7 +7537,7 @@ int main(int argc, char **argv)
     // Ignore SIGPIPE so a write to a closed socket (e.g. a dropped printer
     // network connection) returns EPIPE to the caller instead of terminating
     // the whole process. Without this, losing the printer link kills
-    // OrcaSlicer with SIGPIPE (exit 141) and produces no crash report.
+    // Kobra Slicer with SIGPIPE (exit 141) and produces no crash report.
     std::signal(SIGPIPE, SIG_IGN);
 #endif
     return CLI().run(argc, argv);
