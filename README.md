@@ -20,8 +20,6 @@ Everything OrcaSlicer already does — ultra-fast slicing, intelligent support g
 
 Anycubic's own Kobra 3 Max ships with Anycubic Slicer Next, and stock firmware otherwise has no working path to print from a current OrcaSlicer build — this project exists to close that gap. The real story of how it got built, bug by bug, is documented day-by-day in the [Kobra 3 Max Journey](https://github.com/A-to-PC/Kobra-3-Max-Journey).
 
-Status: **not yet released** — Phase 2 (final testing before a first public release) is in progress. Build from source until a release is published; see **How to Compile** below.
-
 # Main features
 
 Inherited from OrcaSlicer, unchanged:
@@ -45,9 +43,27 @@ Added by this fork:
 
 Most slicer settings and general usage are unchanged from upstream, so [OrcaSlicer's own wiki](https://www.orcaslicer.com/wiki) is still a genuinely useful reference for those. This fork doesn't have a separate wiki of its own yet.
 
+# Download
+
+📥 **[Download the Latest Release](https://github.com/A-to-PC/Kobra-Slicer/releases/latest)**
+
+Windows installer, from the [releases page](https://github.com/A-to-PC/Kobra-Slicer/releases).
+
 # How to install
 
-Not yet published as a release — Phase 2 testing is still in progress. Build from source (below) in the meantime.
+## Windows
+
+Download and run the installer from the [releases page](https://github.com/A-to-PC/Kobra-Slicer/releases/latest).
+
+- *If you have trouble running the build, you might need to install the following runtimes:*
+    <details>
+    <summary>Troubleshooting</summary>
+
+  - [MicrosoftEdgeWebView2RuntimeInstallerX64](https://go.microsoft.com/fwlink/p/?LinkId=2124703) — required for the in-app web views.
+  - [vcredist2019_x64](https://aka.ms/vs/17/release/vc_redist.x64.exe) — this may already be installed if you've had Visual Studio on this machine before. Check `%VCINSTALLDIR%Redist\MSVC\v142` if unsure.
+    </details>
+
+Mac and Linux builds aren't currently produced for this fork — Windows is the only platform this project builds and tests against.
 
 # How to Compile
 
