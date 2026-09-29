@@ -34,6 +34,27 @@ unnecessary or wrong — not a rewrite, not scope creep, just closing the gap be
 Each item: change it, test it against the real printer, only then consider it closed. Once the
 list is clear, that's the release build.
 
+## Multi-colour printing — confirmed working, 29/09/2026
+
+Real test: two objects, single simple test shape, each assigned a different ACE Pro tray
+(1/yellow, 3/purple), Multi Colour process profile (prime tower enabled — the plain single-colour
+profiles have it forced off, would have caused real colour bleed at tool changes; caught before
+sending). Sent, printed, and watched live: correctly switched tray 1 → tray 3 → tray 1, at least
+two real tool changes, both to the correct tray. Stopped intentionally at layer 8/25 once
+confirmed — no need to print the whole test block.
+
+Real gap found along the way, not a functional bug: the upload confirmation dialog's ACE Pro
+tray selector (`PrintHostDialogs.cpp` ~2154) only ever represents the plate's *first* filament's
+tray — real code comment confirms it was only ever built for single-tray confirmation. This is
+why the `ams_box_mapping` sent at upload only had one entry. Doesn't affect whether multi-colour
+actually prints correctly (it does — the real tray switching lives in the sliced gcode itself,
+independent of this dialog), but it's a real, honest Phase 3 item: let the dialog confirm every
+tray a job actually uses, not just the first.
+
+Evidence: no distinct "tray changed" MQTT event field exists in the real capture to point to —
+the switch itself was watched directly on the physical printer, not inferred from a log line.
+Real primary evidence, same standing as several other confirmations this project has relied on.
+
 ## Release notes — multi-manufacturer support claim
 
 Agreed wording, 29/09/2026: state multi-manufacturer support (Bambu, Elegoo, and every other
