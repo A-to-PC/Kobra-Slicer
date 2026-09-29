@@ -45,11 +45,19 @@ confirmed — no need to print the whole test block.
 
 Real gap found along the way, not a functional bug: the upload confirmation dialog's ACE Pro
 tray selector (`PrintHostDialogs.cpp` ~2154) only ever represents the plate's *first* filament's
-tray — real code comment confirms it was only ever built for single-tray confirmation. This is
-why the `ams_box_mapping` sent at upload only had one entry. Doesn't affect whether multi-colour
-actually prints correctly (it does — the real tray switching lives in the sliced gcode itself,
-independent of this dialog), but it's a real, honest Phase 3 item: let the dialog confirm every
-tray a job actually uses, not just the first.
+tray — real code comment confirms it was only ever built for single-tray confirmation, and
+`m_selected_tray_index` really does feed `info["anycubic_tray_index"]` (confirmed by reading the
+code, not assumed) — genuinely functional, just narrowly scoped and currently unlabeled as such.
+This is why the `ams_box_mapping` sent at upload only had one entry. Doesn't affect whether
+multi-colour actually prints correctly (it does — the real tray switching lives in the sliced
+gcode itself, independent of this dialog).
+
+**Agreed Phase 3 fix, 29/09/2026** (the low-effort, immediately valuable one — not the bigger
+"represent every tray" idea, which stays a future nice-to-have): relabel the group box
+**"First colour override"** rather than the current plain "Anycubic ACE Pro", plus a mouseover
+tooltip explaining the scope plainly — something like *"Only affects the first material used —
+later colour changes are handled automatically from the sliced file."* — so nobody mistakes it
+for a full multi-colour tray confirmation.
 
 Evidence: no distinct "tray changed" MQTT event field exists in the real capture to point to —
 the switch itself was watched directly on the physical printer, not inferred from a log line.
