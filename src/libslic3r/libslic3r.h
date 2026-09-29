@@ -2,7 +2,7 @@
 #define _libslic3r_h_
 
 #include "libslic3r_version.h"
-#define SLIC3R_APP_FULL_NAME "Orca Slicer"
+#define SLIC3R_APP_FULL_NAME "Kobra Slicer"
 #define GCODEVIEWER_APP_NAME "Kobra Slicer G-code Viewer"
 #define GCODEVIEWER_APP_KEY  "KobraSlicerGcodeViewer"
 #define GCODEVIEWER_BUILD_ID std::string("Kobra Slicer G-code Viewer-") + std::string(SLIC3R_VERSION) + std::string("-RC")

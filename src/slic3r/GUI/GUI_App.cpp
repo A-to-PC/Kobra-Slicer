@@ -330,13 +330,16 @@ public:
         wxRect rc = wxRect(0, 0, c_sz.GetWidth(), 0);
         dc.SetTextForeground(m_fg_color);
 
+        // Positions tuned 29/09/2026 for the real Kobra Slicer logo/wordmark artwork
+        // (KobraSlicer_about.png), which occupies more of the frame than the old Orca
+        // splash_logo.svg did -- the previous 0.72/0.88 fractions overlapped the wordmark.
         dc.SetFont(m_font_version);
-        rc.y      = c_sz.GetHeight() * 0.72;
+        rc.y      = c_sz.GetHeight() * 0.5;
         rc.height = dc.GetTextExtent(m_text_version).GetHeight();
         dc.DrawLabel(m_text_version, rc, wxALIGN_CENTER);
 
         dc.SetFont(m_font_action);
-        rc.y      = c_sz.GetHeight() * 0.88;
+        rc.y      = c_sz.GetHeight() * 0.96;
         rc.height = dc.GetTextExtent(m_text_action).GetHeight();
         dc.DrawLabel(m_text_action, rc, wxALIGN_CENTER);
     }

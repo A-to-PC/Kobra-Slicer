@@ -25,10 +25,25 @@ unnecessary or wrong — not a rewrite, not scope creep, just closing the gap be
       **`1.0.0` at first public release**, patch/minor bumps from there as updates land.
       `SLIC3R_VERSION` itself left untouched — it's relied on elsewhere for real 3mf/config
       compatibility checks, not safe to repurpose for this.
+- [x] Gcode header (and `header_slic3r_generated()`, its non-Anycubic fallback) was writing the
+      Anycubic-specific line unconditionally, for every printer brand — gated properly behind
+      `is_anycubic_printer` 29/09/2026, restoring the original vanilla line for everyone else.
+      Prompted directly by Jason's real intended use: one slicer for K3M, Elegoo, and Bambu.
 - [ ] (add more here as they turn up — don't fix opportunistically mid-debugging)
 
 Each item: change it, test it against the real printer, only then consider it closed. Once the
 list is clear, that's the release build.
+
+## Release notes — multi-manufacturer support claim
+
+Agreed wording, 29/09/2026: state multi-manufacturer support (Bambu, Elegoo, and every other
+vendor whose profiles ship in this fork) as **should work, not tested** — reasoned through and
+confirmed correct in code (every known Anycubic-specific change checked and confirmed properly
+gated behind `is_anycubic_printer`/`m_is_anycubic_printers`: the gcode header, `source_info`,
+the M900 pressure-advance override, tool-change/physical-extruder-id handling, the ACE Pro
+tray-select dialog), but never actually run against real Elegoo or Bambu hardware — only a K3M
+was available to test against. Be explicit about that gap in the release notes rather than
+implying it's been verified.
 
 ## Phase 3 — Cosmetic and feature updates, post-release
 
