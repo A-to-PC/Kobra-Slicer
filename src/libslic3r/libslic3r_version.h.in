@@ -4,6 +4,11 @@
 #define SLIC3R_APP_NAME "@SLIC3R_APP_NAME@"
 #define SLIC3R_APP_KEY "@SLIC3R_APP_KEY@"
 #define SLIC3R_VERSION "@SLIC3R_VERSION@"
+// Kobra Slicer's own product-facing release version -- independent of SLIC3R_VERSION above,
+// which tracks OrcaSlicer's own internal engine/build numbering and is relied on elsewhere for
+// real 3mf/config compatibility checks. This one is just "what version of Kobra Slicer is
+// this" -- semantic versioning, 0.x.y pre-release, 1.0.0 at first public release.
+#define KOBRA_SLICER_VERSION "@KOBRA_SLICER_VERSION@"
 #define SoftFever_VERSION "@SoftFever_VERSION@"
 #ifndef GIT_COMMIT_HASH
     #define GIT_COMMIT_HASH "0000000" // 0000000 means uninitialized
