@@ -7,7 +7,7 @@
 	"instantiation": "true",
 	"print_settings_id": "0.08mm Standard @Anycubic Kobra 3 Max 0.4 nozzle",
 	"layer_height": "0.08",
-	"filename_format": "{input_filename_base}_{filament_type[initial_tool]}_{layer_height}_{print_time}.gcode",
+	"filename_format": "{timestamp}-{if plate_name==\"\" then input_filename_base+\"_plate\" else plate_name endif}{\"(\"+plate_number+\")\"}_{filament_type[initial_tool]}_{layer_height}_{print_time}.gcode",
 	"compatible_printers": [
 		"Anycubic Kobra 3 Max 0.4 nozzle"
 	],

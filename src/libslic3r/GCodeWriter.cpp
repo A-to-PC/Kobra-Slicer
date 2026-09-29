@@ -378,7 +378,12 @@ std::string GCodeWriter::set_pressure_advance(double pa) const
         gcode << "M900 K" <<std::setprecision(4)<< pa << " L1000 M10 ; Override pressure advance value\n";
     }
     else{
-        if (FLAVOR_IS(gcfKlipper))
+        // The K3M's real firmware keeps Marlin-style M900 for pressure advance despite
+        // declaring gcode_flavor=klipper -- not the generic-Klipper SET_PRESSURE_ADVANCE
+        // macro this fork emits for any gcfKlipper flavor. Forced for Anycubic specifically.
+        if (m_is_anycubic_printers)
+            gcode << "M900 K" <<std::setprecision(4)<< pa << "; Override pressure advance value\n";
+        else if (FLAVOR_IS(gcfKlipper))
             gcode << "SET_PRESSURE_ADVANCE ADVANCE=" << std::setprecision(4) << pa << "; Override pressure advance value\n";
         else if(FLAVOR_IS(gcfRepRapFirmware))
             gcode << ("M572 D0 S") << std::setprecision(4) << pa << "; Override pressure advance value\n";
@@ -576,9 +581,15 @@ std::string GCodeWriter::toolchange(unsigned int filament_id)
     std::ostringstream gcode;
     if (this->multiple_extruders || (this->config.filament_diameter.values.size() > 1 && !is_bbl_printers())) {
         // Orca: call toolchange_prefix() to get the correct command prefix based on the configuration and flavor.
-        gcode << this->toolchange_prefix() << filament_id;
+        gcode << this->toolchange_prefix();
+        // The K3M has one physical nozzle fed by multiple ACE Pro AMS trays -- the raw
+        // AMS/tray id (0-3) isn't a real tool number there. m_curr_extruder_id (set two lines
+        // above) is the correctly-resolved physical extruder id; used for Anycubic
+        // specifically. Bambu's genuine multi-nozzle printers keep the raw per-tray id.
+        gcode << (m_is_anycubic_printers ? (unsigned int)m_curr_extruder_id : filament_id);
         if (GCodeWriter::full_gcode_comment)
-            gcode << " ; change extruder";
+            gcode << " ; change extruder [DIAG anycubic_flag=" << (m_is_anycubic_printers ? "true" : "false")
+                  << " curr_extruder_id=" << m_curr_extruder_id << " filament_id=" << filament_id << "]";
         gcode << "\n";
         gcode << this->reset_e(true);
     }

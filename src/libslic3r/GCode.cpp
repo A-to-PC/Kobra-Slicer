@@ -2046,6 +2046,7 @@ void GCode::do_export(Print* print, const char* path, GCodeProcessorResult* resu
 
     GCodeProcessor::s_IsBBLPrinter = print->is_BBL_printer();
     m_writer.set_is_bbl_machine(print->is_BBL_printer());
+    m_writer.set_is_anycubic_machine(boost::starts_with(print->config().printer_model.value, "Anycubic"));
     print->set_started(psGCodeExport);
 
     // check if any custom gcode contains keywords used by the gcode processor to
@@ -2485,6 +2486,7 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
     m_fan_mover.release();
     
     m_writer.set_is_bbl_machine(is_bbl_printers);
+    m_writer.set_is_anycubic_machine(is_anycubic_printer);
 
     // How many times will be change_layer() called?
     // change_layer() in turn increments the progress bar status.
@@ -2645,12 +2647,68 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
             instance_count += object->instances().size();
         file.write_format("; exclude_object: 1\n");
         file.write_format("; model_instances: %d\n", (int)std::max<size_t>(1, instance_count));
+
+        // source_info/paint_info/project_info also appear here in a real export, not only in
+        // the later "; ams_info = begin/end" block. Duplicated rather than shared to keep
+        // this a minimal, local block.
+        {
+            std::string model_name;
+            if (!print.objects().empty() && print.objects().front()->model_object() != nullptr)
+                model_name = print.objects().front()->model_object()->name;
+            file.write_format(
+                "; source_info: {\"models\":[{\"file_source\":0,\"mo_file_id\":-1,\"name\":\"%s\",\"referrer_source\":-1}],"
+                "\"models_from\":0,\"plate_index\":1,\"slice_paras_process\":1,\"software_version\":\"AnycubicSlicerNext %s\"}\n",
+                model_name.c_str(), SoftFever_VERSION);
+
+            // print.extruders() (not m_writer.extruders(), which isn't populated yet here --
+            // this header is written before set_extruders() runs).
+            std::vector<unsigned int> used_extruder_ids = print.extruders();
+            std::sort(used_extruder_ids.begin(), used_extruder_ids.end());
+            std::string paint_info = "; paint_info = [";
+            bool first = true;
+            // paint_index is the position within this file's own used-filament list (always 0
+            // for a single-material plate), not the project-wide slot number -- confirmed
+            // against two real captures of the same file on different ACE Pro trays.
+            unsigned int paint_index = 0;
+            for (unsigned int extruder_id : used_extruder_ids) {
+                if (extruder_id >= m_config.filament_colour.values.size() ||
+                    extruder_id >= m_config.filament_type.values.size())
+                    continue;
+                const std::string &material_type = m_config.filament_type.values[extruder_id];
+                const std::string &hex = m_config.filament_colour.values[extruder_id];
+                int r = 0, g = 0, b = 0;
+                if (hex.size() >= 7 && hex[0] == '#') {
+                    r = std::stoi(hex.substr(1, 2), nullptr, 16);
+                    g = std::stoi(hex.substr(3, 2), nullptr, 16);
+                    b = std::stoi(hex.substr(5, 2), nullptr, 16);
+                }
+                if (!first) paint_info += ",";
+                first = false;
+                char entry[256];
+                sprintf(entry, "{\"material_type\":\"%s\",\"paint_color\":[%d,%d,%d],\"paint_index\":%u}",
+                        material_type.c_str(), r, g, b, paint_index);
+                paint_info += entry;
+                ++paint_index;
+            }
+            paint_info += "]\n";
+            file.write(paint_info);
+
+            auto floats_to_json = [](const std::vector<double> &v) {
+                std::string s = "[";
+                for (size_t i = 0; i < v.size(); ++i) { if (i) s += ","; s += std::to_string(v[i]); }
+                s += "]";
+                return s;
+            };
+            file.write_format(
+                "; project_info = {\"flush_multiplier\":1.0,\"flush_volumes_chan_multipliers\":%s,"
+                "\"flush_volumes_matrix\":%s,\"flush_volumes_vector\":%s}\n",
+                floats_to_json(m_config.flush_volumes_chan_multipliers.values).c_str(),
+                floats_to_json(m_config.flush_volumes_matrix.values).c_str(),
+                floats_to_json(m_config.flush_volumes_vector.values).c_str());
+        }
+
         file.write_format("; flush_multiplier_calculate_by_acnext: 1\n");
         file.write_format("; test_mode: 0\n");
-        // Deliberately NOT emitting source_info/project_info here: real Slicer Next output has
-        // these as JSON blobs (model file names, AMS flush-volume matrices) that are only
-        // meaningful for its own multi-material UI, not proven to be checked by the firmware's
-        // upload validator -- left out rather than guess at a schema we can't verify.
     }
 
     file.write_format("; HEADER_BLOCK_END\n\n");
@@ -2686,6 +2744,18 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
                 std::string error_str = format("Invalid thumbnails value:");
                 error_str += GCodeThumbnails::get_error_string(errors);
                 throw Slic3r::ExportError(error_str);
+            }
+
+            // A real export embeds a second thumbnail block (512x512) at the printer profile's
+            // own "thumbnails_internal" size -- same render angle as the main thumbnail, not a
+            // true top-down camera render (not implemented).
+            if (is_anycubic_printer && print.full_print_config().opt_bool("thumbnails_internal_switch")) {
+                std::string internal_str = print.full_print_config().opt_string("thumbnails_internal");
+                if (!internal_str.empty()) {
+                    auto [internal_thumbs, internal_errors] = GCodeThumbnails::make_and_check_thumbnail_list(internal_str);
+                    for (auto &t : internal_thumbs)
+                        thumbnails.push_back(t);
+                }
             }
 
             if (!thumbnails.empty())
@@ -3162,6 +3232,10 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
     m_writer.set_current_position_clear(false);
     m_start_gcode_filament = GCodeProcessor::get_gcode_last_filament(machine_start_gcode);
 
+    // BBL-only: calling init_extruder() here would silently mark the writer's current
+    // filament as already set, so the real set_extruder() toolchange call below (where a
+    // non-BBL printer's own filament_start_gcode+PA-override naturally happens) would see
+    // need_toolchange()==false and emit nothing. Anycubic falls through to that path instead.
     if (is_bbl_printers) {
         m_writer.init_extruder(initial_non_support_extruder_id);
         // add the missing filament start gcode in machine start gcode
@@ -3246,7 +3320,18 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
     {
         // Set initial extruder only after custom start G-code.
         // Ugly hack: Do not set the initial extruder if the extruder is primed using the MMU priming towers at the edge of the print bed.
+
+        // "; EXECUTABLE_BLOCK_HEAD" -- a structural marker in the same family as
+        // EXECUTABLE_BLOCK_START/CONFIG_BLOCK_START, immediately before the
+        // filament_start_gcode + tool-select + M75 sequence set_extruder() writes below.
+        if (is_anycubic_printer)
+            file.write("; EXECUTABLE_BLOCK_HEAD\n");
         file.write(this->set_extruder(initial_extruder_id, 0.));
+
+        // Required by the real firmware right after the initial tool select; its absence was
+        // the K3M's own on-device "CODE: 10133, missing required commands" error.
+        if (is_anycubic_printer)
+            file.write("M75 ; The first extruder is ready.\n");
     }
 
     this->m_objsWithBrim.clear();
@@ -3592,11 +3677,45 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
         file.write("; AnycubicSlicer_config = end\n");
         file.write("; CONFIG_BLOCK_END = end\n\n");
 
-        // Real block the K3M's firmware validator checks for (confirmed against a real Slicer
-        // Next export, see the is_anycubic_printer comment above) -- values below are the same
-        // ones already computed just above for the plain "; total filament used" style lines,
-        // not new calculations.
+        // A real block the K3M's firmware validator checks for. "paint_info" here carries the
+        // same material/colour/index shape print/start's own ams_box_mapping sends over MQTT
+        // (see AnycubicMqtt.cpp).
         file.write("; ams_info = begin\n");
+        {
+            std::vector<unsigned int> used_extruder_ids;
+            for (const auto &extruder : m_writer.extruders())
+                used_extruder_ids.push_back(extruder.id());
+            std::sort(used_extruder_ids.begin(), used_extruder_ids.end());
+
+            std::string paint_info = "; paint_info = [";
+            bool first = true;
+            // Same real fix as the header block's own paint_info above -- paint_index is the
+            // position within this file's actually-used-filament list, not the raw project slot.
+            unsigned int paint_index = 0;
+            for (unsigned int extruder_id : used_extruder_ids) {
+                if (extruder_id >= m_config.filament_colour.values.size() ||
+                    extruder_id >= m_config.filament_type.values.size())
+                    continue;
+                const std::string &material_type = m_config.filament_type.values[extruder_id];
+                const std::string &hex = m_config.filament_colour.values[extruder_id];
+                int r = 0, g = 0, b = 0;
+                if (hex.size() >= 7 && hex[0] == '#') {
+                    r = std::stoi(hex.substr(1, 2), nullptr, 16);
+                    g = std::stoi(hex.substr(3, 2), nullptr, 16);
+                    b = std::stoi(hex.substr(5, 2), nullptr, 16);
+                }
+                if (!first)
+                    paint_info += ",";
+                first = false;
+                char entry[256];
+                sprintf(entry, "{\"material_type\":\"%s\",\"paint_color\":[%d,%d,%d],\"paint_index\":%u}",
+                        material_type.c_str(), r, g, b, paint_index);
+                paint_info += entry;
+                ++paint_index;
+            }
+            paint_info += "]\n";
+            file.write(paint_info);
+        }
         file.write("; ams_info = end\n\n");
 
         BoundingBoxf3 plate_bbox;
@@ -3998,15 +4117,25 @@ PlaceholderParserIntegration &ppi = m_placeholder_parser_integration;
 void GCode::print_machine_envelope(GCodeOutputStream &file, Print &print)
 {
     const auto flavor = print.config().gcode_flavor.value;
-    if ((flavor == gcfMarlinLegacy || flavor == gcfMarlinFirmware || flavor == gcfRepRapFirmware) &&
+    // Upstream OrcaSlicer excludes gcfKlipper here on the assumption native Klipper takes its
+    // limits from printer.cfg, not in-gcode M201/M203/M204/M205. The K3M's own firmware
+    // disagrees -- a real export always writes this block despite reporting the same
+    // gcode_flavor "klipper". Enabled for Anycubic only; other Klipper printers unaffected.
+    const bool is_anycubic_printer = boost::starts_with(print.config().printer_model.value, "Anycubic");
+    if ((flavor == gcfMarlinLegacy || flavor == gcfMarlinFirmware || flavor == gcfRepRapFirmware ||
+         (flavor == gcfKlipper && is_anycubic_printer)) &&
         print.config().emit_machine_limits_to_gcode.value == true) {
         int factor = flavor == gcfRepRapFirmware ? 60 : 1; // RRF M203 and M566 are in mm/min
-        file.write_format("M201 X%d Y%d Z%d E%d\n",
+        file.write_format(flavor == gcfRepRapFirmware
+            ? "M201 X%d Y%d Z%d E%d\n"
+            : "M201 X%d Y%d Z%d E%d ; sets machine_max_acceleration_x, y, z, e (mm/sec^2)\n",
             int(print.config().machine_max_acceleration_x.values.front() + 0.5),
             int(print.config().machine_max_acceleration_y.values.front() + 0.5),
             int(print.config().machine_max_acceleration_z.values.front() + 0.5),
             int(print.config().machine_max_acceleration_e.values.front() + 0.5));
-        file.write_format("M203 X%d Y%d Z%d E%d\n",
+        file.write_format(flavor == gcfRepRapFirmware
+            ? "M203 X%d Y%d Z%d E%d ; sets machine_max_speed_x, y, z, e (mm/min)\n"
+            : "M203 X%d Y%d Z%d E%d ; sets machine_max_speed_x, y, z, e (mm/sec)\n",
             int(print.config().machine_max_speed_x.values.front() * factor + 0.5),
             int(print.config().machine_max_speed_y.values.front() * factor + 0.5),
             int(print.config().machine_max_speed_z.values.front() * factor + 0.5),
@@ -4029,7 +4158,7 @@ void GCode::print_machine_envelope(GCodeOutputStream &file, Print &print)
                 int(print.config().machine_max_acceleration_retracting.values.front() + 0.5),
                 int(print.config().machine_max_acceleration_travel.values.front() + 0.5));
         else
-            file.write_format("M204 P%d R%d T%d\n",
+            file.write_format("M204 P%d R%d T%d ; sets machine_max_acceleration(mm/sec^2) M204 P[print] R[retract] T[travel]\n",
                 int(print.config().machine_max_acceleration_extruding.values.front() + 0.5),
                 int(print.config().machine_max_acceleration_retracting.values.front() + 0.5),
                 travel_acc);
@@ -4744,7 +4873,12 @@ LayerResult GCode::process_layer(
         config.set_key_value("max_layer_z", new ConfigOptionFloat(m_max_layer_z));
     }
     //BBS: set layer time fan speed after layer change gcode
-    gcode += ";_SET_FAN_SPEED_CHANGING_LAYER\n";
+    //
+    // This internal-only marker has no consumer anywhere in this codebase and a real Slicer
+    // Next export never writes it -- dead BBS-specific plumbing, disabled for Anycubic rather
+    // than deleted outright in case a not-yet-found BambuLab consumer exists.
+    if (!boost::starts_with(print.config().printer_model.value, "Anycubic"))
+        gcode += ";_SET_FAN_SPEED_CHANGING_LAYER\n";
 
     //Calibration Layer-specific GCode
     switch (print.calib_mode()) {
@@ -5682,7 +5816,11 @@ void GCode::append_full_config(const Print &print, std::string &str)
         "printhost_cafile"sv,
         "printhost_user"sv,
         "printhost_password"sv,
-        "printhost_port"sv
+        "printhost_port"sv,
+        // Crashes the K3M's real Go firmware (a slice-bounds panic in gklib) the instant it
+        // tries to parse this line -- the root cause of the generic "k3c is shutdowing" /
+        // error 10111 rejection. See ANYCUBIC_INTEGRATION_NOTES.md for the full story.
+        "filament_colour_type"sv
     });
     auto is_banned = [](const std::string &key) {
         return banned_keys.find(key) != banned_keys.end();

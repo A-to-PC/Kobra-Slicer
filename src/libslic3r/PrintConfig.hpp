@@ -1601,6 +1601,7 @@ PRINT_CONFIG_CLASS_DERIVED_DEFINE(
     ((ConfigOptionPercent,            wipe_tower_extra_flow))
     ((ConfigOptionFloats,             flush_volumes_matrix))
     ((ConfigOptionFloats,             flush_volumes_vector))
+    ((ConfigOptionFloats,             flush_volumes_chan_multipliers))
 
     // Orca: mmu support
     ((ConfigOptionFloat,              wipe_tower_cone_angle))

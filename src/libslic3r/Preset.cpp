@@ -1376,6 +1376,10 @@ static std::vector<std::string> s_Preset_printer_options {
     "print_host_webui",
     "printhost_cafile","printhost_port","printhost_authorization_type",
     "printhost_user", "printhost_password", "printhost_ssl_ignore_revoke", "thumbnails", "thumbnails_format",
+    // Registering a new option in PrintConfigDef alone isn't enough -- machine .json keys are
+    // also validated against this separate, hardcoded allowlist, or they're silently stripped
+    // as "incorrect keys" and any unconditional opt_*() read of them null-derefs.
+    "thumbnails_internal", "thumbnails_internal_switch",
     "use_relative_e_distances", "extruder_type", "use_firmware_retraction", "printer_notes",
     "grab_length", "support_object_skip_flush", "physical_extruder_map",
     "cooling_tube_retraction",

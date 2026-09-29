@@ -13,6 +13,7 @@
 #include "MsgDialog.hpp"
 #include "../Utils/PrintHost.hpp"
 #include "../Utils/Flashforge.hpp"
+#include "../Utils/AnycubicMqtt.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/ProjectTask.hpp"
 class wxButton;
@@ -24,6 +25,7 @@ class wxFlexGridSizer;
 class wxStaticText;
 class wxWrapSizer;
 class CheckBox;
+class wxRadioButton;
 
 namespace Slic3r { namespace GUI { class BitmapComboBox; } }
 
@@ -217,6 +219,45 @@ private:
     };
     std::vector<SlotInfo>   m_printer_slots;
     std::vector<BitmapComboBox*> m_slot_combos; // one per gcode filament
+};
+
+// Real UX gap found 28/09/2026, per Jason directly ("I like one click and done... slicer next
+// send mqtt as popup opens and all the rest as one popup so one button, no send wait send
+// more"): the old flow showed the generic send dialog, then a SEPARATE tray/options dialog only
+// after the upload finished. This merges the ACE Pro tray swatches + the real
+// leveling/resonance/timelapse/flow-cal checkboxes directly into the one send dialog, following
+// the exact same real, established pattern CrealityPrintHostSendDialog already uses for its own
+// printer-slot mapping + self-test checkbox -- connects and queries the printer live, under a
+// busy cursor, in init(), before the dialog is even shown.
+class AnycubicPrintHostSendDialog : public PrintHostSendDialog
+{
+public:
+    AnycubicPrintHostSendDialog(const boost::filesystem::path& path,
+                                PrintHostPostUploadActions     post_actions,
+                                const wxArrayString&           groups,
+                                const wxArrayString&           storage_paths,
+                                const wxArrayString&           storage_names,
+                                bool                           switch_to_device_tab,
+                                PrintHost*                     printhost);
+
+    virtual void                               init() override;
+    virtual void                               EndModal(int ret) override;
+    virtual std::map<std::string, std::string> extendedInfo() const override;
+
+private:
+    PrintHost           *m_printhost;
+    // Kept alive (not disconnected at end of init()) so upload() reuses this same connection --
+    // see AnycubicLink::attach_session(). Handed off in EndModal() on Start Print; destructs
+    // (disconnecting cleanly) if the dialog is cancelled.
+    std::unique_ptr<AnycubicMqttSession> m_session;
+    std::vector<AceTray>  m_trays;
+    int                   m_selected_tray_index = -1;
+    PrintTaskOptions      m_options;
+    std::vector<wxRadioButton *> m_tray_radios;
+    CheckBox             *m_chk_leveling  = nullptr;
+    CheckBox             *m_chk_resonance = nullptr;
+    CheckBox             *m_chk_timelapse = nullptr;
+    CheckBox             *m_chk_flow_cal  = nullptr;
 };
 
 class FlashforgePrintHostSendDialog : public PrintHostSendDialog

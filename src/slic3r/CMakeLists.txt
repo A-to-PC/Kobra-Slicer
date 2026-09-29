@@ -385,6 +385,8 @@ set(SLIC3R_GUI_SOURCES
     GUI/PresetBundleDialog.hpp
     GUI/ExportPresetBundleDialog.cpp
     GUI/ExportPresetBundleDialog.hpp
+    GUI/AnycubicAceTraySelectDialog.cpp
+    GUI/AnycubicAceTraySelectDialog.hpp
     GUI/PresetComboBoxes.cpp
     GUI/PresetComboBoxes.hpp
     GUI/PresetHints.cpp
@@ -594,6 +596,8 @@ set(SLIC3R_GUI_SOURCES
     Utils/ElegooLink.hpp
     Utils/AnycubicLink.cpp
     Utils/AnycubicLink.hpp
+    Utils/AnycubicMqtt.cpp
+    Utils/AnycubicMqtt.hpp
     Utils/EmbossStyleManager.cpp
     Utils/EmbossStyleManager.hpp
     Utils/ESP3D.cpp

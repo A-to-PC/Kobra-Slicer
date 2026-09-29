@@ -7129,6 +7129,29 @@ void PrintConfigDef::init_fff_params()
     def->gui_type = ConfigOptionDef::GUIType::one_string;
     def->set_default_value(new ConfigOptionString("48x48/PNG,300x300/PNG"));
 
+    // Existed in the Anycubic machine .json but was never registered anywhere in this fork,
+    // so it never actually parsed into the loaded config.
+    def = this->add("thumbnails_internal", coString);
+    def->label = L("G-code thumbnails (internal)");
+    def->tooltip = L("A second thumbnail definition some Anycubic printer profiles use, embedded into the gcode alongside the main one.");
+    def->mode = comAdvanced;
+    def->gui_type = ConfigOptionDef::GUIType::one_string;
+    def->set_default_value(new ConfigOptionString(""));
+
+    def = this->add("thumbnails_internal_switch", coBool);
+    def->label = L("Enable internal G-code thumbnail");
+    def->tooltip = L("Whether the second (internal) thumbnail defined by thumbnails_internal is actually embedded.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(true));
+
+    // A real, distinct per-channel array in project_settings.config -- separate from
+    // flush_multiplier, which this fork was reusing as an approximation.
+    def = this->add("flush_volumes_chan_multipliers", coFloats);
+    def->label = L("Flush volumes channel multipliers");
+    def->tooltip = L("Per-channel flush volume multiplier, one entry per filament slot.");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionFloats{1.0, 1.0, 1.0, 1.0});
+
     def = this->add("thumbnails_format", coEnum);
     def->label = L("Format of G-code thumbnails");
     def->tooltip = L("Format of G-code thumbnails: PNG for best quality, JPG for smallest size, QOI for low memory firmware.");

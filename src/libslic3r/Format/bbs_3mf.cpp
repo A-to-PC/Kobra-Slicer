@@ -5914,7 +5914,7 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
         bool _add_slice_info_config_file_to_archive(mz_zip_archive &archive, const Model &model, PlateDataPtrs &plate_data_list, const ObjectToObjectDataMap &objects_data, const DynamicPrintConfig& config);
         bool _add_filament_sequence_file_to_archive(mz_zip_archive& archive, const PlateDataPtrs& plate_data_list);
         bool _add_gcode_file_to_archive(mz_zip_archive& archive, const Model& model, PlateDataPtrs& plate_data_list, Export3mfProgressFn proFn = nullptr);
-        bool _add_custom_gcode_per_print_z_file_to_archive(mz_zip_archive& archive, Model& model, const DynamicPrintConfig* config);
+        bool _add_custom_gcode_per_print_z_file_to_archive(mz_zip_archive& archive, Model& model, const DynamicPrintConfig* config, PlateDataPtrs& plate_data_list);
         bool _add_auxiliary_dir_to_archive(mz_zip_archive &archive, const std::string &aux_dir, PackingTemporaryData &data);
 
         static int convert_instance_id_to_resource_id(const Model& model, int obj_id, int instance_id)
@@ -6344,7 +6344,7 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
 
             // Adds custom gcode per height file ("Metadata/Prusa_Slicer_custom_gcode_per_print_z.xml").
             // All custom gcode per height of whole Model are stored here
-            if (!_add_custom_gcode_per_print_z_file_to_archive(archive, model, config)) { return false; }
+            if (!_add_custom_gcode_per_print_z_file_to_archive(archive, model, config, plate_data_list)) { return false; }
 
             // BBS progress point
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ":" << __LINE__ << boost::format(", before add project_settings\n");
@@ -6451,10 +6451,19 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
             return false;
         }
 
-        if (!_add_filament_sequence_file_to_archive(archive, plate_data_list)) {
-            BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ":" << __LINE__ << boost::format(", _add_filament_sequence_file_to_archive failed\n");
-            return false;
-        }
+        // Disabled 27/09/2026 to test Jason's real suspicion: this is the one file our
+        // export has that a real Slicer Next export never does (confirmed by a direct
+        // structural diff). Every other real gap found today (the missing gcode.metadata
+        // file, the missing custom_gcode_per_layer.xml) was something we were missing, not
+        // something extra we were adding -- worth ruling this one in or out directly rather
+        // than assuming "extra data, firmware will just ignore it" is actually true for this
+        // specific firmware. If removing it doesn't fix the "k3c is shutdowing" failure,
+        // re-enable it, since it's a legitimate feature (filament-swap-order tracking) that
+        // real OrcaSlicer would otherwise be missing here.
+        // if (!_add_filament_sequence_file_to_archive(archive, plate_data_list)) {
+        //     BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ":" << __LINE__ << boost::format(", _add_filament_sequence_file_to_archive failed\n");
+        //     return false;
+        // }
 
         //BBS progress point
         BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ":" <<__LINE__ << boost::format(", before add auxiliary dir to 3mf\n");
@@ -8171,15 +8180,18 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
         stream << "<" << CONFIG_TAG << ">\n";
 
         // save slice header for debug
+        //
+        // Real header uses X-ACNext-Client-Type/-Version, exactly two items -- not the
+        // un-rebranded X-BBL-Client-* left from this being a BambuStudio/OrcaSlicer fork.
         stream << "  <" << SLICE_HEADER_TAG << ">\n";
-        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-BBL-Client-Type"    << "\" " << VALUE_ATTR << "=\"" << "slicer" << "\"/>\n";
-        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-BBL-Client-Version" << "\" " << VALUE_ATTR << "=\"" << convert_to_full_version(SLIC3R_VERSION) << "\"/>\n";
-        // Real key checked in a real Slicer Next slice_info.config would need confirming against
-        // an actual sample -- renamed to match the same "AnycubicSlicer" prefix already confirmed
-        // required by the firmware's gcode-header check (16/09/2026), on the reasoning that a
-        // producer-recognition check in one place is likely mirrored in another, not proven here.
-        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "AnycubicSlicer-Version" << "\" " << VALUE_ATTR << "=\"" << SoftFever_VERSION << "\"/>\n";
+        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-ACNext-Client-Type"    << "\" " << VALUE_ATTR << "=\"" << "slicer" << "\"/>\n";
+        stream << "    <" << SLICE_HEADER_ITEM_TAG << " " << KEY_ATTR << "=\"" << "X-ACNext-Client-Version" << "\" " << VALUE_ATTR << "=\"" << SoftFever_VERSION << "\"/>\n";
         stream << "  </" << SLICE_HEADER_TAG << ">\n";
+
+        // A real Slicer Next export never has this newer multi-nozzle/AMS dynamic-mapping
+        // schema (added upstream after Anycubic's own fork point) -- gated off for Anycubic,
+        // matching GCode.cpp's own is_anycubic_printer split.
+        const bool is_anycubic_printer = boost::starts_with(config.opt_string("printer_model"), "Anycubic");
 
         for (unsigned int i = 0; i < (unsigned int)plate_data_list.size(); ++i)
         {
@@ -8203,13 +8215,15 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 std::vector<int> nozzle_volume_types = config.option<ConfigOptionEnumsGeneric>("nozzle_volume_type")->values;
                 auto* nozzle_volume_type_option = dynamic_cast<const ConfigOptionEnumsGeneric*>(config.option("nozzle_volume_type"));
 
-                stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << EXTRUDER_TYPE_ATTR << "\" " << VALUE_ATTR << "=\"";
-                add_vector(stream, extruder_types);
-                stream << "\"/>\n";
+                if (!is_anycubic_printer) {
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << EXTRUDER_TYPE_ATTR << "\" " << VALUE_ATTR << "=\"";
+                    add_vector(stream, extruder_types);
+                    stream << "\"/>\n";
 
-                stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << NOZZLE_VOLUME_TYPE_ATTR << "\" " << VALUE_ATTR << "=\"";
-                add_vector(stream, nozzle_volume_types);
-                stream << "\"/>\n";
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << NOZZLE_VOLUME_TYPE_ATTR << "\" " << VALUE_ATTR << "=\"";
+                    add_vector(stream, nozzle_volume_types);
+                    stream << "\"/>\n";
+                }
 
                 auto* nozzle_diameter_option = dynamic_cast<const ConfigOptionFloats*>(config.option("nozzle_diameter"));
                 std::string nozzle_diameters_str;
@@ -8221,12 +8235,13 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << TIMELAPSE_TYPE_ATTR << "\" " << VALUE_ATTR << "=\"" << timelapse_type << "\"/>\n";
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << SLICE_PREDICTION_ATTR << "\" " << VALUE_ATTR << "=\"" << plate_data->get_gcode_prediction_str() << "\"/>\n";
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << SLICE_WEIGHT_ATTR      << "\" " << VALUE_ATTR << "=\"" <<  plate_data->get_gcode_weight_str() << "\"/>\n";
-                stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << FIRST_LAYER_TIME_ATTR      << "\" " << VALUE_ATTR << "=\"" <<  plate_data->first_layer_time << "\"/>\n";
+                if (!is_anycubic_printer)
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << FIRST_LAYER_TIME_ATTR      << "\" " << VALUE_ATTR << "=\"" <<  plate_data->first_layer_time << "\"/>\n";
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << OUTSIDE_ATTR      << "\" " << VALUE_ATTR << "=\"" << std::boolalpha<< plate_data->toolpath_outside << "\"/>\n";
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << SUPPORT_USED_ATTR << "\" " << VALUE_ATTR << "=\"" << std::boolalpha<< plate_data->is_support_used << "\"/>\n";
                 stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << LABEL_OBJECT_ENABLED_ATTR << "\" " << VALUE_ATTR << "=\"" << std::boolalpha<< plate_data->is_label_object_enabled << "\"/>\n";
-                stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << ENABLE_FILAMENT_DYNAMIC_MAP_ATTR << "\" " << VALUE_ATTR << "=\"" << std::boolalpha << false << "\"/>\n";
-                {
+                if (!is_anycubic_printer) {
+                    stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << ENABLE_FILAMENT_DYNAMIC_MAP_ATTR << "\" " << VALUE_ATTR << "=\"" << std::boolalpha << false << "\"/>\n";
                     bool has_filament_switcher = config.has("has_filament_switcher") ? config.opt_bool("has_filament_switcher") : false;
                     stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << HAS_FILAMENT_SWITCHER_ATTR << "\" " << VALUE_ATTR << "=\"" << std::boolalpha << has_filament_switcher << "\"/>\n";
                 }
@@ -8238,7 +8253,7 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 add_vector<int>(stream, filament_maps);
                 stream << "\"/>\n";
 
-                if (plate_data->limit_filament_maps.size() > 0) {
+                if (!is_anycubic_printer && plate_data->limit_filament_maps.size() > 0) {
                     stream << "    <" << METADATA_TAG << " " << KEY_ATTR << "=\"" << LIMIT_FILAMENT_MAP_ATTR << "\" " << VALUE_ATTR << "=\"";
                     add_vector<int>(stream, plate_data->limit_filament_maps);
                     stream << "\"/>\n";
@@ -8252,7 +8267,7 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                 // reconstruct here from the (sorted) objects_and_instances list. identify_id is unchanged.
                 // BambuLab printers keep the raw object name.
                 const GCodeFlavor slice_gcode_flavor    = config.opt_enum<GCodeFlavor>("gcode_flavor");
-                const bool        use_gcode_object_name  = !GCodeProcessor::s_IsBBLPrinter &&
+                const bool        use_gcode_object_name  = !GCodeProcessor::s_IsBBLPrinter && !is_anycubic_printer &&
                     (slice_gcode_flavor == gcfKlipper || slice_gcode_flavor == gcfMarlinLegacy ||
                      slice_gcode_flavor == gcfMarlinFirmware || slice_gcode_flavor == gcfRepRapFirmware);
                 int gcode_object_index = -1;
@@ -8348,18 +8363,27 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                            << FILAMENT_TYPE_TAG << "=\"" << it->type << "\" "
                            << FILAMENT_COLOR_TAG << "=\"" << it->color << "\" "
                            << FILAMENT_USED_M_TAG << "=\"" << it->used_m << "\" "
-                           << FILAMENT_USED_G_TAG << "=\"" << it->used_g << "\" "
-                           << FILAMENT_NOZZLE_GROUP_ID_TAG << "=\"" << filament_nozzle_group_id << "\" "
-                           << FILAMENT_NOZZLE_DIAMETER_TAG << "=\"" << filament_nozzle_diameter << "\" "
-                           << FILAMENT_NOZZLE_VOLUME_TYPE_TAG << "=\"" << filament_nozzle_volume_type << "\" "
-                           << FILAMENT_USED_FOR_OBJECT << "=\"" << std::boolalpha << it->used_for_object << "\" "
-                           << FILAMENT_USED_FOR_SUPPORT << "=\"" << std::boolalpha << it->used_for_support << "\"/>\n";
+                           << FILAMENT_USED_G_TAG << "=\"" << it->used_g << "\"";
+                    // Absent from a real Slicer Next export's <filament> tag -- newer
+                    // OrcaSlicer-fork multi-nozzle/AMS fields added after Anycubic's fork point.
+                    if (!is_anycubic_printer) {
+                        stream << " " << FILAMENT_NOZZLE_GROUP_ID_TAG << "=\"" << filament_nozzle_group_id << "\" "
+                               << FILAMENT_NOZZLE_DIAMETER_TAG << "=\"" << filament_nozzle_diameter << "\" "
+                               << FILAMENT_NOZZLE_VOLUME_TYPE_TAG << "=\"" << filament_nozzle_volume_type << "\" "
+                               << FILAMENT_USED_FOR_OBJECT << "=\"" << std::boolalpha << it->used_for_object << "\" "
+                               << FILAMENT_USED_FOR_SUPPORT << "=\"" << std::boolalpha << it->used_for_support << "\"";
+                    }
+                    stream << " />\n";
                 }
 
                 for (auto it = plate_data->warnings.begin(); it != plate_data->warnings.end(); it++) {
                     stream << "    <" << SLICE_WARNING_TAG << " msg=\"" << it->msg << "\" level=\"" << std::to_string(it->level) << "\" error_code =\"" << it->error_code << "\"  />\n";
                 }
 
+                // <nozzle> and <layer_filament_lists> below are absent from a real Slicer Next
+                // export -- newer OrcaSlicer-fork multi-nozzle/AMS features, gated off for
+                // Anycubic to match the real schema.
+                if (!is_anycubic_printer) {
                 for (int nozzle_group_id : used_nozzle_groups) {
                     stream << "    <" << NOZZLE_TAG << " "
                            << "id=\"" << nozzle_group_id << "\" "
@@ -8367,8 +8391,9 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
                            << "nozzle_diameter=\"" << get_nozzle_diameter_str(nozzle_group_id) << "\" "
                            << "volume_type=\"" << get_nozzle_volume_type(nozzle_group_id) << "\"/>\n";
                 }
+                }
 
-                if (!plate_data->layer_filaments.empty()) {
+                if (!is_anycubic_printer && !plate_data->layer_filaments.empty()) {
                     stream << "    <" << LAYER_FILAMENT_LISTS_TAG << ">\n";
                     for (auto iter = plate_data->layer_filaments.begin(); iter != plate_data->layer_filaments.end(); ++iter) {
                         // key
@@ -8465,20 +8490,51 @@ bool _BBS_3MF_Exporter::_add_gcode_file_to_archive(mz_zip_archive& archive, cons
             }
             mz_zip_reader_end(&archive);
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ":" <<__LINE__ << boost::format(", store  %1% to 3mf %2%\n") % src_gcode_file % gcode_in_3mf;
+
+            // Real Anycubic firmware expects a sibling "plate_N.gcode.metadata" file -- a
+            // lightweight header-only copy (everything up to the real toolpath, plus the
+            // trailing config/ams_info/statistics comment blocks, with the bulk toolpath
+            // itself left out) that it reads for print info/stats without loading the full,
+            // potentially many-MB gcode. Confirmed missing 27/09/2026 by comparing a real
+            // Anycubic Slicer Next export against this codebase's own output byte-for-byte;
+            // the printer's real error for a package missing this file was a generic "cannot
+            // parse the file" (code 10115) after otherwise successfully receiving and
+            // understanding the print/start MQTT command -- see the kobra-slicer-project
+            // memory for the real capture this was diagnosed from.
+            {
+                boost::filesystem::ifstream mifs(src_gcode_file, std::ios::binary);
+                std::string full((std::istreambuf_iterator<char>(mifs)), std::istreambuf_iterator<char>());
+                auto exec_pos   = full.find("; EXECUTABLE_BLOCK_START");
+                auto config_pos = full.find("; CONFIG_BLOCK_START");
+                if (exec_pos != std::string::npos && config_pos != std::string::npos && config_pos > exec_pos) {
+                    std::string meta_content = full.substr(0, exec_pos) + full.substr(config_pos);
+                    std::string meta_in_3mf = gcode_in_3mf + ".metadata";
+                    boost::unique_lock l(mutex);
+                    if (!mz_zip_writer_add_mem(&root_archive, meta_in_3mf.c_str(), meta_content.data(), meta_content.size(), MZ_DEFAULT_COMPRESSION)) {
+                        BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ":" << __LINE__
+                            << boost::format(", failed to add %1% to 3mf\n") % meta_in_3mf;
+                    }
+                } else {
+                    BOOST_LOG_TRIVIAL(warning) << __FUNCTION__ << ":" << __LINE__
+                        << ", could not find EXECUTABLE_BLOCK_START/CONFIG_BLOCK_START markers -- skipping .gcode.metadata";
+                }
+            }
         }
     });
     return result;
 }
 
-bool _BBS_3MF_Exporter::_add_custom_gcode_per_print_z_file_to_archive(mz_zip_archive& archive, Model& model, const DynamicPrintConfig* config)
+bool _BBS_3MF_Exporter::_add_custom_gcode_per_print_z_file_to_archive(mz_zip_archive& archive, Model& model, const DynamicPrintConfig* config, PlateDataPtrs& plate_data_list)
 {
     //BBS: add plate tree related logic
     std::string out = "";
     bool has_custom_gcode = false;
     pt::ptree tree;
     pt::ptree& main_tree = tree.add("custom_gcodes_per_layer", "");
+    std::set<int> plates_written;
     for (auto custom_gcodes : model.plates_custom_gcodes) {
             has_custom_gcode = true;
+            plates_written.insert(custom_gcodes.first);
             pt::ptree& plate_tree = main_tree.add("plate", "");
             pt::ptree& plate_idx_tree = plate_tree.add("plate_info", "");
             plate_idx_tree.put("<xmlattr>.id", custom_gcodes.first + 1);
@@ -8507,7 +8563,24 @@ bool _BBS_3MF_Exporter::_add_custom_gcode_per_print_z_file_to_archive(mz_zip_arc
                 CustomGCode::MultiExtruderMode);
 
     }
-    if (has_custom_gcode) {
+
+    // Real Slicer Next always writes this file, one <plate> entry per plate, even when a
+    // plate has no actual custom gcode -- confirmed 27/09/2026 by comparing a real export
+    // against this fork's own output: ours was missing the file entirely for an ordinary
+    // single-colour print with nothing custom on it. Give every plate that wasn't already
+    // covered above a minimal placeholder entry (plate_info + mode, no <layer> children)
+    // so the file's shape matches regardless of whether anything custom is actually set.
+    for (PlateData *plate_data : plate_data_list) {
+        if (plates_written.count(plate_data->plate_index))
+            continue;
+        pt::ptree& plate_tree = main_tree.add("plate", "");
+        pt::ptree& plate_idx_tree = plate_tree.add("plate_info", "");
+        plate_idx_tree.put("<xmlattr>.id", plate_data->plate_index + 1);
+        pt::ptree& mode_tree = plate_tree.add("mode", "");
+        mode_tree.put("<xmlattr>.value", CustomGCode::MultiExtruderMode);
+    }
+
+    {
         std::ostringstream oss;
         boost::property_tree::write_xml(oss, tree);
         out = oss.str();

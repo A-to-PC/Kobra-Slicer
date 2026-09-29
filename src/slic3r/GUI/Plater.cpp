@@ -66,6 +66,7 @@
 #include "libslic3r/Utils.hpp"
 #include "libslic3r/PresetBundle.hpp"
 #include "slic3r/Utils/CrealityPrint.hpp"
+#include "slic3r/Utils/AnycubicMqtt.hpp"
 #include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/ObjColorUtils.hpp"
 // For stl export
@@ -2145,10 +2146,24 @@ Sidebar::Sidebar(Plater *parent)
 
     ams_btn = new ScalableButton(p->m_panel_filament_title, wxID_ANY, "ams_fila_sync", wxEmptyString, wxDefaultSize, wxDefaultPosition,
                                                  wxBU_EXACTFIT | wxNO_BORDER, false, 16); // ORCA match icon size with other icons as 16x16
-    ams_btn->SetToolTip(_L("Synchronize filament list from AMS"));
     ams_btn->Bind(wxEVT_BUTTON, [this, scrolled_sizer](wxCommandEvent &e) {
-        sync_ams_list();
+        // sync_ams_list() requires a Bambu MachineObject and silently no-ops for any other
+        // printer -- route to the Anycubic sync instead when that's the configured printer.
+        auto printer_cfg = wxGetApp().preset_bundle->printers.get_edited_preset().config;
+        if (boost::starts_with(printer_cfg.opt_string("printer_model"), "Anycubic"))
+            sync_ams_list_anycubic();
+        else
+            sync_ams_list();
     });
+    // Tooltip wording matched 28/09/2026 to Slicer Next's own real button, confirmed against
+    // Jason's own screenshot of it: "Synchronize filament list from ACE Pro", not the generic
+    // Bambu "...from AMS" wording this button started with.
+    {
+        auto printer_cfg = wxGetApp().preset_bundle->printers.get_edited_preset().config;
+        ams_btn->SetToolTip(boost::starts_with(printer_cfg.opt_string("printer_model"), "Anycubic")
+            ? _L("Synchronize filament list from ACE Pro")
+            : _L("Synchronize filament list from AMS"));
+    }
 
     ams_btn->Bind(wxEVT_UPDATE_UI, &Sidebar::update_sync_ams_btn_enable, this);
     p->m_bpButton_ams_filament = ams_btn;
@@ -2468,8 +2483,13 @@ void Sidebar::update_all_preset_comboboxes()
         p->m_printer_connect->Show();
 
         // ORCA: show/hide sync-ams button based on filament sync mode
+        //
+        // getAgent() is Bambu-specific and never wired up for Anycubic (always null/"none"),
+        // so this always hid the button. Anycubic doesn't use an "agent" for this -- shown
+        // directly instead, since AnycubicMqttSession handles the sync itself.
         auto agent = wxGetApp().getAgent();
-        if (agent && agent->get_filament_sync_mode() != FilamentSyncMode::none)
+        bool is_anycubic = boost::starts_with(cfg.opt_string("printer_model"), "Anycubic");
+        if (is_anycubic || (agent && agent->get_filament_sync_mode() != FilamentSyncMode::none))
             p->m_bpButton_ams_filament->Show();
         else
             p->m_bpButton_ams_filament->Hide();
@@ -3739,6 +3759,60 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
     BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << "finish pop_finsish_sync_ams_dialog";
 }
 
+void Sidebar::sync_ams_list_anycubic()
+{
+    // Real feature found missing 28/09/2026 -- see the header comment on the declaration for
+    // the full context. Deliberately reuses the real Filament-panel colour-set mechanism
+    // (PlaterPresetComboBox::sync_colour_config(), the same function a manual click on a
+    // colour swatch calls) rather than writing project_config directly, so this goes through
+    // the exact same dirty/refresh/on_config_change chain a manual colour pick does.
+    auto printer_cfg = wxGetApp().preset_bundle->printers.get_edited_preset().config;
+    std::string host = printer_cfg.opt_string("print_host");
+    if (host.empty()) {
+        p->plater->get_notification_manager()->push_notification(
+            NotificationType::CustomNotification, NotificationManager::NotificationLevel::WarningNotificationLevel,
+            _u8L("No printer host configured -- set one in Printer Settings first."));
+        return;
+    }
+
+    wxBusyCursor cursor; // matches sync_ams_list()'s own real blocking-with-busy-cursor pattern
+    AnycubicMqttSession session;
+    std::string err;
+    if (!session.connect(host, err)) {
+        p->plater->get_notification_manager()->push_notification(
+            NotificationType::CustomNotification, NotificationManager::NotificationLevel::WarningNotificationLevel,
+            _u8L("Could not reach the printer: ") + err);
+        return;
+    }
+    std::vector<AceTray> trays;
+    bool ok = session.query_trays(trays, err);
+    session.disconnect();
+    if (!ok || trays.empty()) {
+        p->plater->get_notification_manager()->push_notification(
+            NotificationType::CustomNotification, NotificationManager::NotificationLevel::WarningNotificationLevel,
+            _u8L("Could not read the ACE Pro's tray data: ") + err);
+        return;
+    }
+
+    // add_filament() -> add_custom_filament() -> is_new_project_in_gcode3mf() silently wipes
+    // the whole project back to defaults whenever the plater shows an exported/preview-only
+    // .gcode.3mf (exactly the state right after a slice/export). Sync only sets colour on
+    // slots that already exist -- trays beyond the current slot count are skipped, not
+    // auto-added.
+    int synced = 0;
+    for (const auto &tray : trays) {
+        if (tray.index < 0 || tray.index >= (int)p->combos_filament.size())
+            continue;
+        char hex[8];
+        snprintf(hex, sizeof(hex), "#%02X%02X%02X", tray.r, tray.g, tray.b);
+        p->combos_filament[tray.index]->sync_colour_config({std::string(hex)}, false);
+        ++synced;
+    }
+
+    p->plater->get_notification_manager()->push_notification(
+        NotificationType::CustomNotification, NotificationManager::NotificationLevel::PrintInfoNotificationLevel,
+        (boost::format(_u8L("Synced %1% filament colour(s) from the ACE Pro.")) % synced).str());
+}
 
 bool Sidebar::should_show_SEMM_buttons()
 {
@@ -16184,6 +16258,11 @@ void Plater::send_gcode_legacy(int plate_idx, Export3mfProgressFn proFn)
             pDlg = std::make_unique<ElegooPrintHostSendDialog>(default_output_file, upload_job.printhost->get_post_upload_actions(), groups,
                                                                storage_paths, storage_names,
                                                                config->get_bool("open_device_tab_post_upload"));
+        } else if (host_type == htAnycubicLink) {
+            pDlg = std::make_unique<AnycubicPrintHostSendDialog>(default_output_file, upload_job.printhost->get_post_upload_actions(), groups,
+                                                                  storage_paths, storage_names,
+                                                                  config->get_bool("open_device_tab_post_upload"),
+                                                                  upload_job.printhost.get());
         } else if (host_type == htCrealityPrint) {
             pDlg = std::make_unique<CrealityPrintHostSendDialog>(default_output_file, upload_job.printhost->get_post_upload_actions(), groups,
                                                                  storage_paths, storage_names,

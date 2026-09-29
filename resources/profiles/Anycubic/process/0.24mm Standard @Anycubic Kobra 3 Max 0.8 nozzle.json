@@ -49,7 +49,7 @@
 	"exclude_object": "1",
 	"extra_perimeters_on_overhangs": "1",
 	"extrusion_rate_smoothing_external_perimeter_only": "0",
-	"filename_format": "{input_filename_base}_{filament_type[initial_tool]}_{layer_height}_{print_time}.gcode",
+	"filename_format": "{timestamp}-{if plate_name==\"\" then input_filename_base+\"_plate\" else plate_name endif}{\"(\"+plate_number+\")\"}_{filament_type[initial_tool]}_{layer_height}_{print_time}.gcode",
 	"filter_out_gap_fill": "0",
 	"flush_into_infill": "0",
 	"flush_into_objects": "0",

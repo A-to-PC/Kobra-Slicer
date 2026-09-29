@@ -1181,15 +1181,17 @@ void GCodeProcessor::run_post_process()
         const std::string& print_time_placeholder = reserved_tag(ETags::Print_Time_Sec_Placeholder);
         const std::string& used_filament_placeholder = reserved_tag(ETags::Used_Filament_Length_Placeholder);
 
-        // Replace print_time_sec
+        // Replace print_time_sec. A real export's "; print_time = " line is a human string
+        // like "1h 11m 54s" (get_time_dhms, same helper as the estimated-printing-time lines
+        // above), not raw seconds. Only this one placeholder use needs it; used_filament stays
+        // a plain decimal.
         size_t pos = gcode_line.find(print_time_placeholder);
         while (pos != std::string::npos) {
             double print_time_sec = m_time_processor.machines[static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Normal)].time;
-            char buf[64];
-            sprintf(buf, "%.2f", print_time_sec);
-            gcode_line.replace(pos, print_time_placeholder.length(), buf);
+            std::string formatted = get_time_dhms(float(print_time_sec));
+            gcode_line.replace(pos, print_time_placeholder.length(), formatted);
             processed = true;
-            pos = gcode_line.find(print_time_placeholder, pos + strlen(buf));
+            pos = gcode_line.find(print_time_placeholder, pos + formatted.length());
         }
 
         // Replace used_filament_length

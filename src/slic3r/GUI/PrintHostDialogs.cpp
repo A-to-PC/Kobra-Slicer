@@ -11,6 +11,7 @@
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 #include <wx/checkbox.h>
+#include <wx/radiobut.h>
 #include <wx/button.h>
 #include <wx/dataview.h>
 #include <wx/dcbuffer.h>
@@ -31,6 +32,8 @@
 #include "MsgDialog.hpp"
 #include "I18N.hpp"
 #include "MainFrame.hpp"
+#include "Widgets/CheckBox.hpp"
+#include "../Utils/AnycubicLink.hpp"
 #include "libslic3r/AppConfig.hpp"
 #include "NotificationManager.hpp"
 #include "ExtraRenderers.hpp"
@@ -2103,6 +2106,145 @@ std::map<std::string, std::string> CrealityPrintHostSendDialog::extendedInfo() c
         }
     }
 
+    return info;
+}
+
+AnycubicPrintHostSendDialog::AnycubicPrintHostSendDialog(const fs::path&            path,
+                                                          PrintHostPostUploadActions post_actions,
+                                                          const wxArrayString&       groups,
+                                                          const wxArrayString&       storage_paths,
+                                                          const wxArrayString&       storage_names,
+                                                          bool                       switch_to_device_tab,
+                                                          PrintHost*                 printhost)
+    : PrintHostSendDialog(path, post_actions, groups, storage_paths, storage_names, switch_to_device_tab)
+    , m_printhost(printhost)
+{}
+
+void AnycubicPrintHostSendDialog::init()
+{
+    PrintHostSendDialog::init();
+
+    // Connects and queries the printer's real live ACE Pro trays + current task settings as
+    // this dialog opens, same moment the real Slicer Next "Start Print" dialog does. The
+    // connection is kept open (not disconnected here) and handed to AnycubicLink in
+    // EndModal() so upload() reuses it instead of opening a second one -- see
+    // AnycubicLink::attach_session().
+    std::string host_url = m_printhost->get_host();
+    {
+        wxBusyCursor wait;
+        m_session.reset(new AnycubicMqttSession());
+        std::string err;
+        if (m_session->connect(host_url, err)) {
+            // send_startup_queries()'s burst is not sent here -- only after the upload, once
+            // print/start is accepted. See AnycubicLink::upload().
+            std::string trays_err;
+            m_session->query_trays(m_trays, trays_err);
+            std::string task_err;
+            m_session->query_task_settings(m_options, task_err);
+        } else {
+            BOOST_LOG_TRIVIAL(warning) << "AnycubicPrintHostSendDialog: could not connect: " << err;
+            m_session.reset(); // nothing to hand off -- upload() will open its own as a fallback
+        }
+    }
+
+    auto* group_box   = new wxStaticBox(this, wxID_ANY, _L("Anycubic ACE Pro"));
+    auto* group_sizer = new wxStaticBoxSizer(group_box, wxVERTICAL);
+    content_sizer->Add(group_sizer, 0, wxEXPAND);
+
+    // Pre-select the tray whose material best matches this plate's first filament, same
+    // "only trays with the same filament type" idea the old separate confirmation dialog used.
+    auto  preset_bundle = wxGetApp().preset_bundle;
+    auto  full_config   = preset_bundle->full_config();
+    auto* filament_types = full_config.option<ConfigOptionStrings>("filament_type");
+    std::string expected_material = (filament_types && !filament_types->values.empty()) ? filament_types->values[0] : std::string();
+
+    if (m_trays.empty()) {
+        auto* warn = new wxStaticText(this, wxID_ANY,
+            _L("Could not reach the ACE Pro's live tray data -- the tray this file was sliced "
+               "for will be used when printing starts."));
+        warn->Wrap(FromDIP(380));
+        group_sizer->Add(warn, 0, wxALL, FromDIP(4));
+    } else {
+        for (const auto &t : m_trays) {
+            auto* row = new wxBoxSizer(wxHORIZONTAL);
+            auto* swatch = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(16), FromDIP(16)));
+            swatch->SetBackgroundColour(wxColour(t.r, t.g, t.b));
+            row->Add(swatch, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
+            long style = m_tray_radios.empty() ? wxRB_GROUP : 0;
+            auto* radio = new wxRadioButton(this, wxID_ANY,
+                wxString::Format("%d: %s", t.index + 1, t.material_type.empty() ? "?" : t.material_type),
+                wxDefaultPosition, wxDefaultSize, style);
+            bool select_this = expected_material.empty() ? m_tray_radios.empty() : t.material_type == expected_material;
+            if (select_this && m_selected_tray_index < 0)
+                m_selected_tray_index = t.index;
+            row->Add(radio, 0, wxALIGN_CENTER_VERTICAL);
+            group_sizer->Add(row, 0, wxALL, FromDIP(2));
+            m_tray_radios.push_back(radio);
+            int tray_index = t.index;
+            radio->Bind(wxEVT_RADIOBUTTON, [this, tray_index](wxCommandEvent &e) {
+                m_selected_tray_index = tray_index;
+                e.Skip();
+            });
+        }
+        if (m_selected_tray_index < 0 && !m_trays.empty())
+            m_selected_tray_index = m_trays.front().index;
+        for (size_t i = 0; i < m_trays.size() && i < m_tray_radios.size(); ++i)
+            m_tray_radios[i]->SetValue(m_trays[i].index == m_selected_tray_index);
+    }
+
+    group_sizer->AddSpacer(VERT_SPACING);
+
+    // Real options found 28/09/2026 in Slicer Next's own "Start Print" dialog (Jason's
+    // screenshot): Bed leveling / Resonance compensation / Time-lapse / Flow calibration.
+    auto make_checkbox = [&](const wxString &label, bool default_value) {
+        auto* sizer = new wxBoxSizer(wxHORIZONTAL);
+        auto* chk = new ::CheckBox(this);
+        chk->SetValue(default_value);
+        sizer->Add(chk, 0, wxALL | wxALIGN_CENTER, FromDIP(2));
+        auto* text = new wxStaticText(this, wxID_ANY, label);
+        text->SetFont(::Label::Body_13);
+        sizer->Add(text, 0, wxALL | wxALIGN_CENTER, FromDIP(2));
+        group_sizer->Add(sizer);
+        return chk;
+    };
+    m_chk_leveling  = make_checkbox(_L("Bed leveling"), m_options.auto_leveling);
+    m_chk_resonance = make_checkbox(_L("Resonance compensation"), m_options.vibration_compensation);
+    m_chk_timelapse = make_checkbox(_L("Time-lapse"), m_options.timelapse);
+    m_chk_flow_cal  = make_checkbox(_L("Flow calibration"), m_options.flow_calibration);
+
+    this->Layout();
+    this->Fit();
+}
+
+void AnycubicPrintHostSendDialog::EndModal(int ret)
+{
+    // Hands the still-open session to AnycubicLink so upload() reuses it -- see
+    // AnycubicLink::attach_session(). On cancel, m_session just destructs (disconnects cleanly).
+    if (ret == wxID_OK && m_session) {
+        auto* anycubic_host = dynamic_cast<AnycubicLink*>(m_printhost);
+        if (anycubic_host)
+            anycubic_host->attach_session(std::move(m_session));
+    }
+    PrintHostSendDialog::EndModal(ret);
+}
+
+std::map<std::string, std::string> AnycubicPrintHostSendDialog::extendedInfo() const
+{
+    std::map<std::string, std::string> info;
+    info["anycubic_tray_index"] = std::to_string(m_selected_tray_index);
+    for (const auto &t : m_trays) {
+        if (t.index != m_selected_tray_index)
+            continue;
+        info["anycubic_tray_r"]        = std::to_string(t.r);
+        info["anycubic_tray_g"]        = std::to_string(t.g);
+        info["anycubic_tray_b"]        = std::to_string(t.b);
+        info["anycubic_tray_material"] = t.material_type;
+        break;
+    }
+    info["anycubic_auto_leveling"]          = (m_chk_leveling  && m_chk_leveling->GetValue())  ? "1" : "0";
+    info["anycubic_vibration_compensation"] = (m_chk_resonance && m_chk_resonance->GetValue()) ? "1" : "0";
+    info["anycubic_timelapse"]              = (m_chk_timelapse && m_chk_timelapse->GetValue()) ? "1" : "0";
+    info["anycubic_flow_calibration"]       = (m_chk_flow_cal  && m_chk_flow_cal->GetValue())  ? "1" : "0";
     return info;
 }
 
