@@ -37,5 +37,32 @@ once this is posted publicly, including to Anycubic's own K3M Facebook page).
 
 - **Live monitoring via an inbuilt web view**: open Kobra LAN Monitor's own live camera/status
   feed inside Kobra Slicer itself (an embedded browser panel), as the main first post-release
-  update — rather than needing a separate app running alongside the slicer.
+  update — rather than needing a separate app running alongside the slicer. Real investigation
+  done 29/09/2026 (while Jason was out), not yet built — deliberately, since it touches
+  `MainFrame`'s tab system and needs real interactive testing, not a blind guess:
+  - Hook point: the "Switch to Device tab after upload" checkbox already calls
+    `mainframe->request_select_tab(MainFrame::TabPosition::tpMonitor)` in
+    `PrintHost.cpp:371` — reuse this trigger, don't add a new checkbox.
+  - **Don't insert a new tab.** `MainFrame`'s tab bar uses fixed integer positions
+    (`tpProject=5` etc.) checked in dozens of places in `MainFrame.cpp` — inserting a page
+    would shift every later tab's real runtime index while those hardcoded comparisons stay
+    the same, a real risk of silently breaking other tab logic.
+  - **Don't modify the existing Device tab's internals either.** It's `MonitorPanel`
+    (`Monitor.hpp/cpp`, ~700 lines) wrapping `StatusPanel` (~6,000 lines) plus four more
+    sub-panels — large, unfamiliar, Bambu-cloud-oriented. Not safe to edit blind.
+  - **The safe path**: a small, standalone new panel class (same reasoning as
+    `AnycubicAceTraySelectDialog` — deliberately not reusing the big generic Bambu dialog),
+    just a `wxWebView` + fallback message, swapped in for `MonitorPanel` at the exact spot
+    `m_monitor` gets constructed and added to the tab panel (`MainFrame.cpp` ~line 1327).
+  - Reuse what already exists rather than building fresh: `WebView::CreateWebView(parent, url)`
+    (`Widgets/WebView.cpp`, already used by `MarkdownTip`) for the embed itself, and the
+    existing `WebView::CheckWebViewRuntime()` / `DownloadAndInstallWebViewRuntime()` pattern
+    for the "WebView2 runtime missing" case — directly reusable for the "Kobra LAN Monitor not
+    found, please download and install" fallback Jason wants, same shape of problem.
+  - Real target URL: `http://localhost:8899` — confirmed from Kobra LAN Monitor's own
+    `Program.cs` (`GetValue<int?>("HttpPort") ?? 8899`), the actual default a normal install
+    uses. (Not `8900` — that was only today's manual override for a second, parallel capture
+    instance during testing, not the real default.)
+  - Detection: a short-timeout local HTTP probe to that URL before deciding whether to show
+    the WebView or the "please install" message with a link.
 - (add more here as they come in — expect requests to arrive quickly once this is public)
