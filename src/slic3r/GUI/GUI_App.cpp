@@ -333,8 +333,10 @@ public:
         // Positions tuned 29/09/2026 for the real Kobra Slicer logo/wordmark artwork
         // (KobraSlicer_about.png), which occupies more of the frame than the old Orca
         // splash_logo.svg did -- the previous 0.72/0.88 fractions overlapped the wordmark.
+        // 0.5 (dead centre) landed on the snake's coils, hard to read -- moved into the
+        // genuinely empty gap between the wordmark and the loading text instead.
         dc.SetFont(m_font_version);
-        rc.y      = c_sz.GetHeight() * 0.5;
+        rc.y      = c_sz.GetHeight() * 0.84;
         rc.height = dc.GetTextExtent(m_text_version).GetHeight();
         dc.DrawLabel(m_text_version, rc, wxALIGN_CENTER);
 
