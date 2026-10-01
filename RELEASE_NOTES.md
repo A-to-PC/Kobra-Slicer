@@ -1,6 +1,6 @@
 # Kobra Slicer — Release Notes
 
-## v1.0.0 — [date to be set at final build]
+## v1.0.0 — 01/10/2026
 
 Kobra Slicer is an OrcaSlicer fork adding real, direct-from-slicer support for the Anycubic
 Kobra 3 Max — upload and print over the printer's own MQTT connection, no intermediate app,
