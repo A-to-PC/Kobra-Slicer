@@ -22,6 +22,14 @@ set(SLIC3R_VERSION "02.06.00.51")
 # versioning, independent of Orca's own numbering. 0.1.0 now during Phase 2 testing
 # (see ROADMAP.md), bump to 1.0.0 at first public release, then up from there as updates land.
 set(KOBRA_SLICER_VERSION "0.1.0")
+# Same major/minor/patch split as SoftFever_VERSION above, but for Kobra Slicer's own real
+# version -- used by the installer (CPack/NSIS section) so the packaged installer reports the
+# same version the app's own About dialog does, instead of Orca's internal engine number.
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)"
+       KOBRA_SLICER_VERSION_MATCH ${KOBRA_SLICER_VERSION})
+set(KOBRA_SLICER_VERSION_MAJOR ${CMAKE_MATCH_1})
+set(KOBRA_SLICER_VERSION_MINOR ${CMAKE_MATCH_2})
+set(KOBRA_SLICER_VERSION_PATCH ${CMAKE_MATCH_3})
 
 if (NOT DEFINED ORCA_UPDATER_SIG_KEY)
     set(ORCA_UPDATER_SIG_KEY "" CACHE STRING "Base64url encoded updater signature key")
