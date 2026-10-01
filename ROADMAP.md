@@ -2,6 +2,43 @@
 
 Jason's own plan, logged as stated so it isn't lost between sessions.
 
+## Real calibration day, 30/09/2026 — confirmed locked in
+
+Full machine + slicer recalibration, done properly from scratch (not inherited from Slicer
+Next's broken wizards or an untrusted download). Final values, confirmed actually saved in the
+real profile (`user/default/filament/PLA.json`, checked directly, not assumed):
+
+| Parameter | Was | Now |
+|---|---|---|
+| Flow ratio | 0.915 | **1.0** |
+| Pressure advance | 0.05 | **0.078** |
+| Max volumetric speed | 18 | **9.7** |
+| Retraction | 0.2 | 0.2 (confirmed still correct, no stringing) |
+| Nozzle temp | — | 220 first layer / 210 standard, bed 60 |
+
+Cornering, input shaping and VFA cal prints: VFA ran clean (no banding at any tested
+speed/angle, left at default — genuinely no change needed, not skipped). Cornering and input
+shaping were left at default for 1.0.0, not run — see the real bug below.
+
+## Real bug found and independently verified, 30/09/2026 — OrcaSlicer's own calibration generator
+
+Not Anycubic-specific — this is upstream OrcaSlicer behaviour this fork inherited, so it would
+affect any printer brand's cornering/input-shaping/VFA calibration prints, not just the K3M.
+Confirmed directly by reading the actual source, not taken on anyone's word:
+`Plater::calib_VFA()` (`Plater.cpp` ~13425, and the equivalent cornering/input-shaping
+functions) takes a direct pointer to the **live, active** preset's config
+(`preset_bundle->prints.get_edited_preset().config`) and calls `set_key_value()` straight onto
+it — wall loops, infill, spiral mode, overhang speed, and more, all real settings, no temporary
+copy made first. Running one of these calibration tests genuinely mutates your actual active
+profile in memory; only noticing the resulting "unsaved changes" indicator and discarding it
+stops that mutation from landing in your real saved profile.
+
+**Fix, for 1.1.0** (not urgent for 1.0.0 — real prints are clean on the locked values above,
+cornering/input-shaping just stay at sensible defaults until this lands): have the cal-print
+functions clone the active preset, apply the test overrides to the clone, generate gcode from
+the clone, then discard it — never touch the original. One shared fix covers cornering, input
+shaping, and VFA, since they all go through the same pattern.
+
 ## Phase 1 — Get it working (done, 29/09/2026)
 
 Full upload-and-print working end to end against a real Kobra 3 Max, confirmed by a real
