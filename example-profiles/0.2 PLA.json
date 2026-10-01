@@ -1,0 +1,40 @@
+{
+	"bottom_shell_layers": "4",
+	"bottom_shell_thickness": "0.8",
+	"brim_type": "no_brim",
+	"enable_prime_tower": "0",
+	"flush_into_infill": "1",
+	"from": "User",
+	"infill_wall_overlap": "30%",
+	"inherits": "0.20mm Standard @Anycubic Kobra 3 Max 0.4 nozzle",
+	"name": "0.2 PLA",
+	"outer_wall_speed": "100",
+	"overhang_3_4_speed": "20",
+	"overhang_4_4_speed": "7",
+	"print_extruder_id": [
+		"1"
+	],
+	"print_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"print_settings_id": "0.2 PLA",
+	"reduce_crossing_wall": "1",
+	"resolution": "0.006",
+	"seam_position": "aligned_back",
+	"seam_slope_type": "external",
+	"skirt_loops": "2",
+	"slice_closing_radius": "0.02",
+	"slowdown_for_curled_perimeters": "1",
+	"small_perimeter_speed": "30%",
+	"sparse_infill_density": "10%",
+	"support_on_build_plate_only": "0",
+	"support_remove_small_overhang": "0",
+	"support_threshold_angle": "45",
+	"thick_internal_bridges": "1",
+	"top_bottom_infill_wall_overlap": "30%",
+	"travel_speed": "350",
+	"version": "1.3.2609.2",
+	"wall_generator": "arachne",
+	"wall_loops": "4",
+	"wipe_on_loops": "1"
+}

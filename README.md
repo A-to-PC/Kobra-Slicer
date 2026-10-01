@@ -65,6 +65,13 @@ Download and run the installer from the [releases page](https://github.com/A-to-
 
 Mac and Linux builds aren't currently produced for this fork — Windows is the only platform this project builds and tests against.
 
+## Example printer/filament/process settings
+
+[`example-profiles/`](example-profiles/) has Jason's own real, print-tested Kobra 3 Max
+settings (printer overrides, PLA filament profile, 0.2mm process profile) — not defaults,
+just a known-working starting point if you'd rather start from confirmed real settings than
+the stock profile.
+
 # How to Compile
 
 This fork's own build script: `run_slicer_build.bat`, at the repo root. General OrcaSlicer build instructions (dependencies, toolchain setup) at the [OrcaSlicer Wiki — How to build](https://www.orcaslicer.com/wiki/how_to_build) page still apply, since the underlying build system is unchanged from upstream.

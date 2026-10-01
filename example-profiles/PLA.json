@@ -1,0 +1,60 @@
+{
+	"cool_plate_temp": [
+		"40"
+	],
+	"cool_plate_temp_initial_layer": [
+		"40"
+	],
+	"filament_cost": [
+		"12.9"
+	],
+	"filament_extruder_variant": [
+		"Direct Drive Standard"
+	],
+	"filament_flow_ratio": [
+		"1"
+	],
+	"filament_max_volumetric_speed": [
+		"9.7"
+	],
+	"filament_settings_id": [
+		"PLA"
+	],
+	"from": "User",
+	"hot_plate_temp": [
+		"60"
+	],
+	"hot_plate_temp_initial_layer": [
+		"60"
+	],
+	"inherits": "Anycubic PLA @Anycubic Kobra 3 Max 0.4 nozzle",
+	"name": "PLA",
+	"nozzle_temperature": [
+		"230"
+	],
+	"nozzle_temperature_initial_layer": [
+		"240"
+	],
+	"nozzle_temperature_range_high": [
+		"240"
+	],
+	"nozzle_temperature_range_low": [
+		"210"
+	],
+	"overhang_fan_threshold": [
+		"25%"
+	],
+	"pressure_advance": [
+		"0.078"
+	],
+	"slow_down_layer_time": [
+		"4"
+	],
+	"textured_plate_temp": [
+		"60"
+	],
+	"textured_plate_temp_initial_layer": [
+		"60"
+	],
+	"version": "1.3.2609.2"
+}

@@ -85,11 +85,10 @@ AnycubicAceTraySelectDialog::AnycubicAceTraySelectDialog(wxWindow *parent, const
     root->Add(hint_text, 0, wxALL, 12);
 
     auto *swatch_sizer = new wxBoxSizer(wxHORIZONTAL);
-    // Real ACE Pro units report 4 trays (confirmed 28/09/2026 against a real AC_LOG_MAX.pack
-    // export) -- if the live query came back empty, still show 4 slots so the user isn't stuck
-    // with zero options, just with no real data to label them.
-    // Uses each tray's own real .index as the swatch identity (not vector position), so a
-    // sparse or out-of-order report can never resolve to the wrong tray.
+    // ACE Pro units report 4 trays -- if the live query came back empty, still show 4 slots
+    // so the user isn't stuck with zero options, just with no real data to label them.
+    // Uses each tray's own .index as the swatch identity (not vector position), so a sparse
+    // or out-of-order report can never resolve to the wrong tray.
     const int tray_count = trays.empty() ? 4 : static_cast<int>(trays.size());
     for (int i = 0; i < tray_count; ++i) {
         bool has_data = i < static_cast<int>(trays.size());
@@ -108,9 +107,8 @@ AnycubicAceTraySelectDialog::AnycubicAceTraySelectDialog(wxWindow *parent, const
     }
     root->Add(swatch_sizer, 0, wxALIGN_CENTER | wxALL, 8);
 
-    // Real options found 28/09/2026 in Slicer Next's own "Start Print" dialog (Jason's
-    // screenshot) -- see the header comment. Grid layout matches that dialog's own 2x2
-    // arrangement (leveling/resonance on one row, timelapse/flow calibration on the next).
+    // Matches Anycubic Slicer Next's own "Start Print" dialog: leveling/resonance on one
+    // row, timelapse/flow calibration on the next.
     auto *opts_grid = new wxFlexGridSizer(2, 2, FromDIP(4), FromDIP(16));
     m_chk_leveling  = new wxCheckBox(this, wxID_ANY, _("Bed leveling"));
     m_chk_resonance = new wxCheckBox(this, wxID_ANY, _("Resonance compensation"));

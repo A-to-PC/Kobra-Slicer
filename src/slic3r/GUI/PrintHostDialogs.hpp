@@ -221,14 +221,12 @@ private:
     std::vector<BitmapComboBox*> m_slot_combos; // one per gcode filament
 };
 
-// Real UX gap found 28/09/2026, per Jason directly ("I like one click and done... slicer next
-// send mqtt as popup opens and all the rest as one popup so one button, no send wait send
-// more"): the old flow showed the generic send dialog, then a SEPARATE tray/options dialog only
-// after the upload finished. This merges the ACE Pro tray swatches + the real
-// leveling/resonance/timelapse/flow-cal checkboxes directly into the one send dialog, following
-// the exact same real, established pattern CrealityPrintHostSendDialog already uses for its own
-// printer-slot mapping + self-test checkbox -- connects and queries the printer live, under a
-// busy cursor, in init(), before the dialog is even shown.
+// One-click upload-and-print: merges the ACE Pro tray swatches and the
+// leveling/resonance/timelapse/flow-cal checkboxes directly into the send dialog, instead of
+// a separate tray/options dialog after upload finishes -- the same established pattern
+// CrealityPrintHostSendDialog already uses for its own printer-slot mapping and self-test
+// checkbox. Connects and queries the printer live, under a busy cursor, in init(), before
+// the dialog is even shown.
 class AnycubicPrintHostSendDialog : public PrintHostSendDialog
 {
 public:

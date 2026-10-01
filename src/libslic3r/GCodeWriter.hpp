@@ -124,9 +124,9 @@ public:
     //SoftFever
     void set_is_bbl_machine(bool bval) {m_is_bbl_printers = bval;}
     const bool is_bbl_printers() const {return m_is_bbl_printers;}
-    // Added 27/09/2026: GCodeWriter's own `config` is a narrower GCodeConfig, not the full
-    // PrintConfig, so it has no printer_model field to derive this from locally -- set explicitly
-    // from GCode.cpp, mirroring set_is_bbl_machine() above.
+    // GCodeWriter's own `config` is a narrower GCodeConfig, not the full PrintConfig, so it
+    // has no printer_model field to derive this from locally -- set explicitly from
+    // GCode.cpp, mirroring set_is_bbl_machine() above.
     void set_is_anycubic_machine(bool bval) {m_is_anycubic_printers = bval;}
     const bool is_anycubic_printers() const {return m_is_anycubic_printers;}
     void set_is_first_layer(bool bval) { m_is_first_layer = bval; }

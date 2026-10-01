@@ -236,14 +236,12 @@ std::string GCodeWriter::set_acceleration_internal(Acceleration type, unsigned i
     else if (FLAVOR_IS(gcfRepRapFirmware) || FLAVOR_IS(gcfMarlinFirmware))
         gcode << (separate_travel ? "M204 T" : "M204 P") << acceleration;
     // Deliberately NOT using SET_VELOCITY_LIMIT ACCEL= for Klipper flavor here, unlike jerk
-    // below. Real captured traffic from Anycubic's own Slicer Next (which also declares
-    // gcode_flavor=klipper) shows it emits plain "M204 S<accel>" for every per-feature
-    // acceleration change and reserves the real Klipper macro for jerk only (SET_VELOCITY_LIMIT
-    // SQUARE_CORNER_VELOCITY=, fired once since jerk rarely changes) -- confirmed 16/09/2026 by
-    // diffing a real working Slicer Next export against this codebase's own klipper-flavor
-    // output (7,600+ SET_VELOCITY_LIMIT ACCEL= calls vs Slicer Next's zero). The K3M's firmware
-    // rejects an upload with that many Klipper macro calls ("Invalid gcode file"); falling
-    // through to the plain M204 branch below matches what the real printer actually accepts.
+    // below. Anycubic Slicer Next (which also declares gcode_flavor=klipper) emits plain
+    // "M204 S<accel>" for every per-feature acceleration change and reserves the Klipper
+    // macro for jerk only (SET_VELOCITY_LIMIT SQUARE_CORNER_VELOCITY=, fired once since jerk
+    // rarely changes). The K3M's firmware rejects an upload with thousands of Klipper macro
+    // calls ("Invalid gcode file"); falling through to the plain M204 branch below matches
+    // what the printer actually accepts.
     else
         gcode << "M204 S" << acceleration;
 

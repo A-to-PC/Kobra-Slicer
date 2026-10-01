@@ -307,9 +307,7 @@ public:
         bool dark_mode = m_fg_color != wxColour("#6B6A6A");
         wxSize sz  = m_window->GetClientSize();
         BitmapCache bmp_cache;
-        // Kobra Slicer's own real logo (KobraSlicer_about / _about_dark), same pack already
-        // used by AboutDialog -- the splash screen was still on Orca's stock splash_logo.svg
-        // until 29/09/2026.
+        // Kobra Slicer's own logo (KobraSlicer_about / _about_dark), same asset AboutDialog uses.
         m_logo_bmp = *bmp_cache.load_png(dark_mode ? "KobraSlicer_about_dark" : "KobraSlicer_about", sz.GetWidth(), sz.GetHeight());
 
         m_window->Bind(wxEVT_PAINT, &SplashScreen::OnPaint, this);
@@ -330,15 +328,14 @@ public:
         wxRect rc = wxRect(0, 0, c_sz.GetWidth(), 0);
         dc.SetTextForeground(m_fg_color);
 
-        // Positions tuned 29/09/2026 for the real Kobra Slicer logo/wordmark artwork
-        // (KobraSlicer_about.png), which occupies more of the frame than the old Orca
-        // splash_logo.svg did -- the previous 0.72/0.88 fractions overlapped the wordmark.
-        // 0.5 (dead centre) landed on the snake's coils, hard to read -- moved into the
-        // genuinely empty gap between the wordmark and the loading text instead.
+        // Top-right corner: the "SLICER" wordmark in the artwork (KobraSlicer_about.png)
+        // runs down to roughly 90% of the frame height, and the remaining gap before the
+        // loading-text row is too narrow to reliably fit a version string centred there.
         dc.SetFont(m_font_version);
-        rc.y      = c_sz.GetHeight() * 0.84;
-        rc.height = dc.GetTextExtent(m_text_version).GetHeight();
-        dc.DrawLabel(m_text_version, rc, wxALIGN_CENTER);
+        wxSize version_sz = dc.GetTextExtent(m_text_version);
+        wxRect version_rc(c_sz.GetWidth() - version_sz.GetWidth() - FromDIP(12), FromDIP(10),
+                           version_sz.GetWidth(), version_sz.GetHeight());
+        dc.DrawLabel(m_text_version, version_rc, wxALIGN_CENTER);
 
         dc.SetFont(m_font_action);
         rc.y      = c_sz.GetHeight() * 0.96;
@@ -6033,8 +6030,8 @@ std::string GUI_App::format_display_version()
 {
     if (!version_display.empty()) return version_display;
 
-    // Kobra Slicer's own real version, not OrcaSlicer's internal engine build number --
-    // see version.inc / ROADMAP.md, agreed with Jason 29/09/2026.
+    // Kobra Slicer's own version, not OrcaSlicer's internal engine build number -- see
+    // version.inc / ROADMAP.md.
     version_display = KOBRA_SLICER_VERSION;
     return version_display;
 }

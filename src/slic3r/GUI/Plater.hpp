@@ -194,13 +194,11 @@ public:
     void load_ams_list(MachineObject* obj);
     std::map<int, DynamicPrintConfig> build_filament_ams_list(MachineObject* obj);
     void sync_ams_list(bool is_from_big_sync_btn = false);
-    // Real feature found missing 28/09/2026, per Jason's own direct comparison against Slicer
-    // Next's own "Synchronize filament list from ACE Pro" button (same physical button in this
-    // fork's own UI, "ams_fila_sync" -- sync_ams_list() above just no-ops for Anycubic printers
-    // since it requires a Bambu MachineObject that doesn't exist for them). Populates the
-    // filament colour swatches (combos_filament) from the ACE Pro's real, live tray data, the
-    // same query AnycubicAceTraySelectDialog uses at print time, but here at slicing time --
-    // real colours in the Filament panel with no manual setup, matching Slicer Next.
+    // Anycubic equivalent of the "ams_fila_sync" button above -- sync_ams_list() just no-ops
+    // for Anycubic printers since it requires a Bambu MachineObject that doesn't exist for
+    // them. Populates the filament colour swatches (combos_filament) from the ACE Pro's
+    // live tray data, the same query AnycubicAceTraySelectDialog uses at print time, but
+    // here at slicing time -- real colours in the Filament panel with no manual setup.
     void sync_ams_list_anycubic();
     bool sync_extruder_list();
     bool need_auto_sync_extruder_list_after_connect_priner(const MachineObject* obj);

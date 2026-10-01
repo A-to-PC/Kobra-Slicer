@@ -15,14 +15,11 @@
 
 namespace Slic3r { namespace GUI {
 
-// The real, interactive confirmation step Jason found missing 28/09/2026, comparing this
-// fork directly against Slicer Next's own "Start Print" dialog: a real print always shows the
-// ACE Pro's actual live trays and lets the user pick/correct which one to use, since which
-// spool is physically loaded in which bay can change between slicing and printing -- a slicer
-// can never get this right by silently guessing. Deliberately small and purpose-built rather
-// than reusing SelectMachineDialog (5,900+ lines, deeply tied to Bambu's own cloud device
-// model that doesn't recognize Anycubic printers at all) -- see the kobra-slicer-project
-// memory for that scoping decision.
+// Shows the ACE Pro's actual live trays and lets the user pick/correct which one to use,
+// since which spool is physically loaded in which bay can change between slicing and
+// printing -- a slicer can never get this right by silently guessing. Deliberately small
+// and purpose-built rather than reusing SelectMachineDialog (5,900+ lines, deeply tied to
+// Bambu's own cloud device model, which doesn't recognize Anycubic printers at all).
 class AceTraySwatch;
 
 class AnycubicAceTraySelectDialog : public wxDialog

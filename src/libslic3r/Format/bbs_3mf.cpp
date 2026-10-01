@@ -175,14 +175,12 @@ const std::string BBL_MODIFICATION_TAG              = "ModificationDate";
 const std::string BBL_CREATION_DATE_TAG             = "CreationDate";
 // Orca: BBL current version
 const std::string BBL_APPLICATION_TAG               = "Application";
-// OrcaSlicer version tag
-// Renamed from "OrcaSlicer" 16/09/2026: this tag gets written into the 3D model metadata of
-// every file we export, including uploads to the K3M, whose firmware checks for an
-// "AnycubicSlicer"-prefixed producer signature (confirmed from the real firmware binary).
-// Symmetric with the one read-side check below, so our own exported files still round-trip
-// correctly on re-import -- the only real tradeoff is that a genuine old OrcaSlicer-authored
-// file's 2.3.1-alpha migration fix (the only other use of this tag) won't fire on import,
-// since the real old files still literally say "OrcaSlicer" and won't match this renamed value.
+// This tag gets written into the 3D model metadata of every exported file, including
+// uploads to the K3M, whose firmware checks for an "AnycubicSlicer"-prefixed producer
+// signature. Symmetric with the read-side check below, so our own exported files still
+// round-trip correctly on re-import. Tradeoff: a genuine old OrcaSlicer-authored file's
+// 2.3.1-alpha migration fix (the only other use of this tag) won't fire on import, since
+// those files still literally say "OrcaSlicer" and won't match this renamed value.
 const std::string ORCASLICER_TAG                    = "AnycubicSlicer";
 const std::string BBL_MAKERLAB_TAG                  = "MakerLab";
 const std::string BBL_MAKERLAB_VERSION_TAG          = "MakerLabVersion";
@@ -6451,15 +6449,10 @@ void PlateData::parse_filament_info(GCodeProcessorResult *result)
             return false;
         }
 
-        // Disabled 27/09/2026 to test Jason's real suspicion: this is the one file our
-        // export has that a real Slicer Next export never does (confirmed by a direct
-        // structural diff). Every other real gap found today (the missing gcode.metadata
-        // file, the missing custom_gcode_per_layer.xml) was something we were missing, not
-        // something extra we were adding -- worth ruling this one in or out directly rather
-        // than assuming "extra data, firmware will just ignore it" is actually true for this
-        // specific firmware. If removing it doesn't fix the "k3c is shutdowing" failure,
-        // re-enable it, since it's a legitimate feature (filament-swap-order tracking) that
-        // real OrcaSlicer would otherwise be missing here.
+        // Disabled: this is the one file our export has that a real Slicer Next export
+        // never does. Candidate cause for a K3M upload failure ("k3c is shutdowing"). If
+        // disabling it doesn't resolve that failure, re-enable it -- it's a legitimate
+        // feature (filament-swap-order tracking) that would otherwise be missing here.
         // if (!_add_filament_sequence_file_to_archive(archive, plate_data_list)) {
         //     BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << ":" << __LINE__ << boost::format(", _add_filament_sequence_file_to_archive failed\n");
         //     return false;
@@ -8491,16 +8484,12 @@ bool _BBS_3MF_Exporter::_add_gcode_file_to_archive(mz_zip_archive& archive, cons
             mz_zip_reader_end(&archive);
             BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ":" <<__LINE__ << boost::format(", store  %1% to 3mf %2%\n") % src_gcode_file % gcode_in_3mf;
 
-            // Real Anycubic firmware expects a sibling "plate_N.gcode.metadata" file -- a
-            // lightweight header-only copy (everything up to the real toolpath, plus the
+            // Anycubic firmware expects a sibling "plate_N.gcode.metadata" file -- a
+            // lightweight header-only copy (everything up to the toolpath, plus the
             // trailing config/ams_info/statistics comment blocks, with the bulk toolpath
-            // itself left out) that it reads for print info/stats without loading the full,
-            // potentially many-MB gcode. Confirmed missing 27/09/2026 by comparing a real
-            // Anycubic Slicer Next export against this codebase's own output byte-for-byte;
-            // the printer's real error for a package missing this file was a generic "cannot
-            // parse the file" (code 10115) after otherwise successfully receiving and
-            // understanding the print/start MQTT command -- see the kobra-slicer-project
-            // memory for the real capture this was diagnosed from.
+            // left out) that it reads for print info/stats without loading the full,
+            // potentially many-MB gcode. Without it, the firmware fails with a generic
+            // "cannot parse the file" (code 10115) after otherwise accepting the upload.
             {
                 boost::filesystem::ifstream mifs(src_gcode_file, std::ios::binary);
                 std::string full((std::istreambuf_iterator<char>(mifs)), std::istreambuf_iterator<char>());
@@ -8564,12 +8553,10 @@ bool _BBS_3MF_Exporter::_add_custom_gcode_per_print_z_file_to_archive(mz_zip_arc
 
     }
 
-    // Real Slicer Next always writes this file, one <plate> entry per plate, even when a
-    // plate has no actual custom gcode -- confirmed 27/09/2026 by comparing a real export
-    // against this fork's own output: ours was missing the file entirely for an ordinary
-    // single-colour print with nothing custom on it. Give every plate that wasn't already
-    // covered above a minimal placeholder entry (plate_info + mode, no <layer> children)
-    // so the file's shape matches regardless of whether anything custom is actually set.
+    // Anycubic Slicer Next always writes one <plate> entry per plate, even when a plate has
+    // no custom gcode. Give every plate that wasn't already covered above a minimal
+    // placeholder entry (plate_info + mode, no <layer> children) so the file's shape
+    // matches regardless of whether anything custom is actually set.
     for (PlateData *plate_data : plate_data_list) {
         if (plates_written.count(plate_data->plate_index))
             continue;

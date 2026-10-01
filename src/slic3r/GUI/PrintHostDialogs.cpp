@@ -2124,6 +2124,14 @@ void AnycubicPrintHostSendDialog::init()
 {
     PrintHostSendDialog::init();
 
+    // Anycubic Slicer Next has no plain "upload only" action for this printer -- it's
+    // upload-and-print or nothing. A plain upload here leaves the printer's display stuck at
+    // "handshake" with no way to clear it, since the firmware was never built to settle into
+    // an upload-only state. Hide the base dialog's plain "Upload" button so this host only
+    // offers the one action that's actually supported.
+    if (auto *upload_only_btn = FindWindow(wxID_OK))
+        upload_only_btn->Hide();
+
     // Connects and queries the printer's real live ACE Pro trays + current task settings as
     // this dialog opens, same moment the real Slicer Next "Start Print" dialog does. The
     // connection is kept open (not disconnected here) and handed to AnycubicLink in
@@ -2147,7 +2155,12 @@ void AnycubicPrintHostSendDialog::init()
         }
     }
 
-    auto* group_box   = new wxStaticBox(this, wxID_ANY, _L("Anycubic ACE Pro"));
+    // This group only ever represents the plate's *first* filament's tray (see the
+    // pre-select logic just below), never the full multi-colour tray mapping, which is
+    // handled automatically from the sliced gcode itself.
+    auto* group_box   = new wxStaticBox(this, wxID_ANY, _L("First colour override"));
+    group_box->SetToolTip(_L("Only affects the first material used -- later colour changes "
+                              "are handled automatically from the sliced file."));
     auto* group_sizer = new wxStaticBoxSizer(group_box, wxVERTICAL);
     content_sizer->Add(group_sizer, 0, wxEXPAND);
 
@@ -2165,11 +2178,16 @@ void AnycubicPrintHostSendDialog::init()
         warn->Wrap(FromDIP(380));
         group_sizer->Add(warn, 0, wxALL, FromDIP(4));
     } else {
+        // Laid out as one horizontal row of columns (swatch above, radio below) rather than
+        // a stacked list of rows, which reads poorly with several trays. Each tray still
+        // gets its own column, just side-by-side instead of top-to-bottom.
+        auto* trays_row = new wxBoxSizer(wxHORIZONTAL);
+        group_sizer->Add(trays_row, 0, wxALL, FromDIP(2));
         for (const auto &t : m_trays) {
-            auto* row = new wxBoxSizer(wxHORIZONTAL);
+            auto* col = new wxBoxSizer(wxVERTICAL);
             auto* swatch = new wxPanel(this, wxID_ANY, wxDefaultPosition, wxSize(FromDIP(16), FromDIP(16)));
             swatch->SetBackgroundColour(wxColour(t.r, t.g, t.b));
-            row->Add(swatch, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(6));
+            col->Add(swatch, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM, FromDIP(4));
             long style = m_tray_radios.empty() ? wxRB_GROUP : 0;
             auto* radio = new wxRadioButton(this, wxID_ANY,
                 wxString::Format("%d: %s", t.index + 1, t.material_type.empty() ? "?" : t.material_type),
@@ -2177,8 +2195,8 @@ void AnycubicPrintHostSendDialog::init()
             bool select_this = expected_material.empty() ? m_tray_radios.empty() : t.material_type == expected_material;
             if (select_this && m_selected_tray_index < 0)
                 m_selected_tray_index = t.index;
-            row->Add(radio, 0, wxALIGN_CENTER_VERTICAL);
-            group_sizer->Add(row, 0, wxALL, FromDIP(2));
+            col->Add(radio, 0, wxALIGN_CENTER_HORIZONTAL);
+            trays_row->Add(col, 0, wxALIGN_TOP | wxALL, FromDIP(8));
             m_tray_radios.push_back(radio);
             int tray_index = t.index;
             radio->Bind(wxEVT_RADIOBUTTON, [this, tray_index](wxCommandEvent &e) {
@@ -2194,8 +2212,8 @@ void AnycubicPrintHostSendDialog::init()
 
     group_sizer->AddSpacer(VERT_SPACING);
 
-    // Real options found 28/09/2026 in Slicer Next's own "Start Print" dialog (Jason's
-    // screenshot): Bed leveling / Resonance compensation / Time-lapse / Flow calibration.
+    // Matches Anycubic Slicer Next's own "Start Print" dialog: Bed leveling / Resonance
+    // compensation / Time-lapse / Flow calibration.
     auto make_checkbox = [&](const wxString &label, bool default_value) {
         auto* sizer = new wxBoxSizer(wxHORIZONTAL);
         auto* chk = new ::CheckBox(this);

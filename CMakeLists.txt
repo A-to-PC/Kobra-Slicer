@@ -931,38 +931,7 @@ endif ()
 install(FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt DESTINATION ".")
 configure_file(${LIBDIR}/dev-utils/platform/unix/fhs.hpp.in ${LIBDIR_BIN}/dev-utils/platform/unix/fhs.hpp)
 
-set (CPACK_PACKAGE_NAME "Kobra Slicer")
-set (CPACK_PACKAGE_VENDOR "A to PC")
-set (CPACK_PACKAGE_VERSION_MAJOR "${KOBRA_SLICER_VERSION_MAJOR}")
-set (CPACK_PACKAGE_VERSION_MINOR "${KOBRA_SLICER_VERSION_MINOR}")
-set (CPACK_PACKAGE_VERSION_PATCH "${KOBRA_SLICER_VERSION_PATCH}")
-set (CPACK_PACKAGE_FILE_NAME "KobraSlicer_Windows_Installer_V${KOBRA_SLICER_VERSION}")
-# Suffix the Windows installer with its target arch so the x64 and arm64 builds
-# produce distinct filenames (matches ARCH_SUFFIX in build_orca.yml). Same
-# CMAKE_SYSTEM_PROCESSOR mapping used by orcaslicer_copy_dlls() above.
-if (WIN32)
-    if (CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
-        string (APPEND CPACK_PACKAGE_FILE_NAME "_arm64")
-    else ()
-        string (APPEND CPACK_PACKAGE_FILE_NAME "_x64")
-    endif ()
-endif ()
-set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Kobra Slicer -- an OrcaSlicer fork with real Anycubic Kobra 3 Max support")
-set (CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/A-to-PC/Kobra-Slicer")
-set (CPACK_PACKAGE_INSTALL_DIRECTORY "Kobra Slicer")
-set (CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/resources/images\\\\KobraSlicer.ico")
-set (CPACK_NSIS_MUI_ICON "${CPACK_PACKAGE_ICON}")
-set (CPACK_NSIS_MUI_UNIICON "${CPACK_PACKAGE_ICON}")
-set (CPACK_NSIS_INSTALLED_ICON_NAME  "$INSTDIR\\\\kobra-slicer.exe")
-set (CPACK_PACKAGE_CHECKSUM SHA256)
-set (CPACK_PACKAGE_INSTALL_REGISTRY_KEY "KobraSlicer")
-set (CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-set (CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
-# set (CPACK_NSIS_MODIFY_PATH "ON")
-set(CPACK_PACKAGE_EXECUTABLES "kobra-slicer;Kobra Slicer")
-set(CPACK_CREATE_DESKTOP_LINKS "kobra-slicer")
-set (CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE.txt) # must also include in install command
-
-set(CPACK_WIX_UPGRADE_GUID "058245e8-20e0-4a95-9ab7-1acfe17ad511")
-set(CPACK_GENERATOR NSIS)
-include(CPack)
+# Windows installer is built with Inno Setup (see KobraSlicer.iss at the repo root), not CPack/
+# NSIS -- NSIS itself wasn't installable on the build machine (download blocked by firewall,
+# fallback package install failed its own hash check), while Inno Setup was already installed
+# and trusted. KobraSlicer.iss packages this same `cmake --install` output directly.

@@ -20,7 +20,7 @@ Cornering, input shaping and VFA cal prints: VFA ran clean (no banding at any te
 speed/angle, left at default — genuinely no change needed, not skipped). Cornering and input
 shaping were left at default for 1.0.0, not run — see the real bug below.
 
-## Real bug found and independently verified, 30/09/2026 — OrcaSlicer's own calibration generator
+## Real behaviour found and independently verified, 30/09/2026 — OrcaSlicer's own calibration generator
 
 Not Anycubic-specific — this is upstream OrcaSlicer behaviour this fork inherited, so it would
 affect any printer brand's cornering/input-shaping/VFA calibration prints, not just the K3M.
@@ -33,16 +33,43 @@ copy made first. Running one of these calibration tests genuinely mutates your a
 profile in memory; only noticing the resulting "unsaved changes" indicator and discarding it
 stops that mutation from landing in your real saved profile.
 
-**Fix, for 1.1.0** (not urgent for 1.0.0 — real prints are clean on the locked values above,
-cornering/input-shaping just stay at sensible defaults until this lands): have the cal-print
-functions clone the active preset, apply the test overrides to the clone, generate gcode from
-the clone, then discard it — never touch the original. One shared fix covers cornering, input
-shaping, and VFA, since they all go through the same pattern.
+**Not yet confirmed: whether this is a bug.** What's verified above is the code's actual
+behaviour, read directly from the source. Whether that behaviour is unintended (a genuine bug)
+or deliberate upstream design — relying on the normal "unsaved changes" prompt as the intended
+safety net rather than an oversight — has not been checked against OrcaSlicer's own issue
+tracker, changelog, or any maintainer statement. Don't treat "bug" as settled until that's done.
+
+**Possible fix, for 1.1.0, if it does turn out to be unintended** (not urgent for 1.0.0 — real
+prints are clean on the locked values above, cornering/input-shaping just stay at sensible
+defaults in the meantime): have the cal-print functions clone the active preset, apply the test
+overrides to the clone, generate gcode from the clone, then discard it — never touch the
+original. One shared fix would cover cornering, input shaping, and VFA, since they all go
+through the same pattern.
 
 ## Phase 1 — Get it working (done, 29/09/2026)
 
 Full upload-and-print working end to end against a real Kobra 3 Max, confirmed by a real
 completed print. See `ANYCUBIC_INTEGRATION_NOTES.md` for every bug found and fixed to get here.
+
+## Upload-only hang, found 01/10/2026 — root cause: not a real supported flow, button removed
+
+Found by accident: a plain upload (no immediate print) left the printer's display stuck at
+"handshake". File transfer itself succeeded and the file was available to print manually from
+the printer's own screen. First attempted fix: send the same handshake query `print/start`
+normally sends first (`AnycubicMqttSession::send_pre_print_check()`), for every upload, not
+just ones that go on to print. Tested against the real printer — did not resolve it, still
+stuck at handshake.
+
+Real root cause, confirmed directly: Anycubic Slicer Next itself has no plain "upload only"
+action for this printer — it's upload-and-print or nothing. The firmware's MQTT protocol was
+only ever built and tested around that one combined flow; there's no real reference behaviour
+for a standalone upload to capture or match, because Anycubic's own software never puts the
+printer in that state either. Confirmed by trying to trigger a plain upload directly from
+Slicer Next to capture its traffic — the option doesn't exist there at all.
+
+Fix: removed the plain "Upload" button from Kobra Slicer's own Anycubic send dialog
+(`AnycubicPrintHostSendDialog::init()`, `PrintHostDialogs.cpp`) — "Upload and Print" is now the
+only action offered for this printer, matching what Anycubic's own software actually supports.
 
 ## Phase 2 — Minimal necessary cleanup, test, release
 

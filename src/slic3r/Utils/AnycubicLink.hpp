@@ -13,24 +13,16 @@ namespace Slic3r {
 class DynamicPrintConfig;
 class Http;
 
-// Talks to the Anycubic Kobra 3 Max's own local HTTP service (port 18910), the same
-// service Anycubic Slicer Next itself uses -- confirmed 15/09/2026 by capturing a real
-// Upload-and-Print from a live Slicer Next session against the real printer (see
-// kobra-slicer-project memory for the full writeup). Two real endpoints on that service:
+// Talks to the Anycubic Kobra 3 Max's own local HTTP service (port 18910), the same one
+// Anycubic Slicer Next uses. Two endpoints:
 //   GET  http://<host>:18910/info          -> JSON including a ready-to-use "fileUploadurl"
 //   POST <that fileUploadurl>              -> multipart/form-data file upload
 // The upload URL's "s=" token is handed out by /info itself -- there is no signing scheme
 // to replicate, the printer just tells the client where to POST.
 //
-// Starting the print after upload goes over the printer's real MQTT control channel, whose
-// topic and payload shape were captured from a genuine Slicer Next print on 27/09/2026 (see
-// AnycubicMqtt.hpp/.cpp and the kobra-slicer-project memory for the full capture, including
-// four real bugs found and fixed the same day: a crash on a bodyless HTTP request, every
-// number/bool being sent as a quoted JSON string, a missing package file the real firmware
-// needs, and a raw socket close that looked like a crash to the printer). Confirmed live,
-// real printer, real first layer -- but via a standalone script reusing this same protocol
-// logic against a real Slicer-Next-produced file, not yet through this class's own upload()
-// path with a file this fork itself produced. That's the next real test.
+// Starting the print after upload goes over the printer's MQTT control channel -- see
+// AnycubicMqtt.hpp/.cpp. Confirmed working end to end against a real printer: upload,
+// print start, and a full completed print.
 class AnycubicLink : public PrintHost
 {
 public:

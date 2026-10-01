@@ -1,0 +1,18 @@
+Kobra Slicer -- real, print-tested printer settings
+Anycubic Kobra 3 Max, 0.4mm nozzle
+Confirmed working across close to two days of direct printing, 30/09/2026-01/10/2026.
+
+Base profile: "Anycubic Kobra 3 Max 0.4 nozzle" (shipped default, select this when adding
+your printer)
+
+Overrides on top of the base profile:
+- Max layer height: 0.32mm
+- Retraction length: 0.22mm
+- Extruder variant: Direct Drive Standard
+
+Not included here: the printer's connection address (its IP on your own network). That's
+specific to your own printer and network -- set it yourself under Printer Settings after
+adding the printer, there's nothing to copy from this list for that part.
+
+See PLA.json and "0.2 PLA.json" in this same folder for the matching filament and process
+settings used alongside this printer profile.

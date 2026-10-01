@@ -134,7 +134,13 @@ bool AnycubicLink::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, E
                                            // repeated calls (this method runs on a per-upload
                                            // background thread, never shared across calls).
     PrintTaskOptions chosen_options;
-    if (upload_data.post_action == PrintHostPostUploadAction::StartPrint) {
+    const bool       start_print_requested = upload_data.post_action == PrintHostPostUploadAction::StartPrint;
+    // An MQTT session is opened for every upload, not just when the user asked to print
+    // immediately. Without it, the printer's own display hangs at "handshake" after an
+    // upload-only transfer -- the firmware waits for this connection/acknowledgment
+    // regardless of whether a print is about to start. The file still finishes uploading via
+    // plain HTTP either way; this only affects whether the printer's UI settles afterward.
+    {
         // Reuses the same connection AnycubicPrintHostSendDialog already opened and handed off
         // via attach_session(), rather than opening a second one. m_pending_session is only
         // ever set by that dialog, on the main thread, before this background-thread method
@@ -146,10 +152,17 @@ bool AnycubicLink::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, E
             std::string connect_err;
             if (!mqtt_session->connect(m_host, connect_err)) {
                 BOOST_LOG_TRIVIAL(error) << boost::format("%1%: could not connect before upload: %2%") % name % connect_err;
-                error_fn(GUI::format_wxstr("%s: %s", _L("Could not reach the printer to start the print"), connect_err));
-                return false;
+                if (start_print_requested) {
+                    error_fn(GUI::format_wxstr("%s: %s", _L("Could not reach the printer to start the print"), connect_err));
+                    return false;
+                }
+                // Upload-only: a failed handshake connection isn't fatal to the file transfer
+                // itself, just log it and continue without a session.
+                mqtt_session.reset();
             }
         }
+    }
+    if (start_print_requested && mqtt_session) {
         // Tray + options confirmation happens in AnycubicPrintHostSendDialog -- the same
         // single dialog the user clicked "Upload and Print" on. Choices arrive via
         // extended_info (the same mechanism ElegooPrintHostSendDialog/CrealityPrintHostSendDialog
@@ -224,7 +237,13 @@ bool AnycubicLink::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, E
         })
         .perform_sync();
 
-    if (res && mqtt_session) {
+    if (res && mqtt_session && !start_print_requested) {
+        // Upload-only: send the same handshake query print/start would have sent first, so
+        // the printer's display clears the "handshake" state, then disconnect without ever
+        // calling print/start. File stays uploaded and available to start manually.
+        mqtt_session->send_pre_print_check();
+        mqtt_session->disconnect();
+    } else if (res && mqtt_session) {
         // Real sequence: a single lastWill/query, then print/start almost immediately. The
         // full confirmation burst (print/query, calibration/getInfo, etc.) and fileDetails
         // both fire only *after* the printer accepts the print (state "auto_leveling"), as

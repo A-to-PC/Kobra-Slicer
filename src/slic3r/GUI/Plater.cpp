@@ -2155,9 +2155,8 @@ Sidebar::Sidebar(Plater *parent)
         else
             sync_ams_list();
     });
-    // Tooltip wording matched 28/09/2026 to Slicer Next's own real button, confirmed against
-    // Jason's own screenshot of it: "Synchronize filament list from ACE Pro", not the generic
-    // Bambu "...from AMS" wording this button started with.
+    // Tooltip wording matches Anycubic Slicer Next's own button: "Synchronize filament list
+    // from ACE Pro", not the generic Bambu "...from AMS" wording this button started with.
     {
         auto printer_cfg = wxGetApp().preset_bundle->printers.get_edited_preset().config;
         ams_btn->SetToolTip(boost::starts_with(printer_cfg.opt_string("printer_model"), "Anycubic")
@@ -3761,11 +3760,11 @@ void Sidebar::sync_ams_list(bool is_from_big_sync_btn)
 
 void Sidebar::sync_ams_list_anycubic()
 {
-    // Real feature found missing 28/09/2026 -- see the header comment on the declaration for
-    // the full context. Deliberately reuses the real Filament-panel colour-set mechanism
-    // (PlaterPresetComboBox::sync_colour_config(), the same function a manual click on a
-    // colour swatch calls) rather than writing project_config directly, so this goes through
-    // the exact same dirty/refresh/on_config_change chain a manual colour pick does.
+    // See the header comment on the declaration for context. Deliberately reuses the
+    // Filament-panel colour-set mechanism (PlaterPresetComboBox::sync_colour_config(), the
+    // same function a manual click on a colour swatch calls) rather than writing
+    // project_config directly, so this goes through the exact same dirty/refresh/
+    // on_config_change chain a manual colour pick does.
     auto printer_cfg = wxGetApp().preset_bundle->printers.get_edited_preset().config;
     std::string host = printer_cfg.opt_string("print_host");
     if (host.empty()) {
