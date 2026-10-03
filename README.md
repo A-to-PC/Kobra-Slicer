@@ -50,6 +50,15 @@ Added by this fork:
   Kobra Slicer patches independently; tracked upstream, and this fork will pick up whatever fix
   lands there.
 
+- **Kobra Slicer's Kobra 3 Max profile runs some speeds — notably overhang speed — slower than
+  Anycubic's own Slicer Next defaults.** This is deliberate, not a bug: it comes from real
+  calibration against this printer, not stock values. If you're coming from Slicer Next, prints
+  will take noticeably longer than you're used to on the same model. In exchange: 3 days of
+  printing on the slower profile with zero creaking or cracking from the machine, versus constant
+  creaking/cracking before — a real, noticeable mechanical and quality improvement, not just a
+  number going up. If print speed matters more to you than that, the overhang speed settings are
+  just normal process settings and can be raised back up like any other.
+
 # Wiki
 
 Most slicer settings and general usage are unchanged from upstream, so [OrcaSlicer's own wiki](https://www.orcaslicer.com/wiki) is still a genuinely useful reference for those. This fork doesn't have a separate wiki of its own yet.
