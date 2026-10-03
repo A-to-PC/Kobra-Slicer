@@ -739,7 +739,8 @@ void AnycubicMqttSession::send_pre_print_check()
 }
 
 void AnycubicMqttSession::send_startup_queries(const std::string &filename, const std::string &source_file_path,
-                                                size_t filesize, const PrintTaskOptions &options)
+                                                size_t filesize, const PrintTaskOptions &options,
+                                                const std::string &printer_type_name)
 {
     if (!m_impl->connected) return;
     auto &stream = *m_impl->stream;
@@ -786,6 +787,7 @@ void AnycubicMqttSession::send_startup_queries(const std::string &filename, cons
     // wifi_signal aren't available to this class here, so those are honest placeholders, not
     // fabricated telemetry. cn_code is a fixed device-side constant, confirmed identical across
     // every real capture. app_version/slicer/source_info report this app's own real identity.
+    const std::string printer_type = printer_type_name.empty() ? "Anycubic Kobra 3 Max" : printer_type_name;
     {
         const std::string buried_topic = (boost::format("anycubic/anycubicCloud/v1/printer/public/%1%/%2%/buried/report")
                                            % creds.model_id % creds.device_id).str();
@@ -801,7 +803,7 @@ void AnycubicMqttSession::send_startup_queries(const std::string &filename, cons
           << "\"gcode_size\":" << gcode_size << ","
           << "\"is_rfid\":[0,0,0,0],"
           << "\"print_filaments\":\"PLA\",\"print_filaments_weight\":\"\","
-          << "\"printer_type\":\"Anycubic Kobra 3 Max\","
+          << "\"printer_type\":\"" << json_escape(printer_type) << "\","
           << "\"slice_filaments\":\"PLA;PLA;PLA;PLA\","
           << "\"slicer\":\"KobraSlicer\","
           << "\"source_info\":{\"plate_index\":1,\"models_from\":0,"

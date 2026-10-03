@@ -261,7 +261,7 @@ bool AnycubicLink::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, E
         }
 
         // Only sent once print/start is actually accepted.
-        mqtt_session->send_startup_queries(upload_filename.string(), upload_data.source_path.string(), file_size, chosen_options);
+        mqtt_session->send_startup_queries(upload_filename.string(), upload_data.source_path.string(), file_size, chosen_options, model_name);
 
         std::string verify_err;
         if (!mqtt_session->verify_uploaded_file(upload_filename.string(), verify_err)) {

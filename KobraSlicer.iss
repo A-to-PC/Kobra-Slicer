@@ -9,7 +9,7 @@
 ; Then compile this script (ISCC.exe KobraSlicer.iss) to produce the installer.
 
 #define MyAppName "Kobra Slicer"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "A to PC"
 #define MyAppURL "https://github.com/A-to-PC/Kobra-Slicer"
 #define MyAppExeName "kobra-slicer.exe"

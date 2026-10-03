@@ -21,7 +21,7 @@ set(SLIC3R_VERSION "02.06.00.51")
 # compatibility checks -- not safe to repurpose). Semantic versioning, independent of Orca's
 # own numbering. 0.1.0 during testing (see ROADMAP.md), bumped to 1.0.0 at first public
 # release, then up from there as updates land.
-set(KOBRA_SLICER_VERSION "1.0.0")
+set(KOBRA_SLICER_VERSION "1.0.1")
 
 if (NOT DEFINED ORCA_UPDATER_SIG_KEY)
     set(ORCA_UPDATER_SIG_KEY "" CACHE STRING "Base64url encoded updater signature key")

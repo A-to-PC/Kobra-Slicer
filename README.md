@@ -39,6 +39,17 @@ Added by this fork:
 - **Anycubic Kobra 3 Max / Kobra S1 Max / Kobra X profiles**, including real ACE Pro tray selection.
 - Multi-manufacturer support (Bambu, Elegoo, and every other vendor's profiles) is expected to keep working unchanged — every Anycubic-specific addition is gated in code to only affect Anycubic printers — but is not yet tested against real hardware beyond the Kobra 3 Max, since that's the only printer this project has to test with.
 
+# Known limitations
+
+- **Print-time estimates can drift noticeably from actual print time**, especially on gyroid/
+  variable sparse infill and heavily cornering geometry. This is a known, already-reported
+  upstream OrcaSlicer limitation ([#7576](https://github.com/OrcaSlicer/OrcaSlicer/issues/7576),
+  [#15790](https://github.com/OrcaSlicer/OrcaSlicer/issues/15790)) — the estimate comes from the
+  slicer's own internal time model, not the printer's real firmware motion planning/acceleration/
+  buffering, and the mismatch isn't specific to this fork or to Anycubic printers. Not something
+  Kobra Slicer patches independently; tracked upstream, and this fork will pick up whatever fix
+  lands there.
+
 # Wiki
 
 Most slicer settings and general usage are unchanged from upstream, so [OrcaSlicer's own wiki](https://www.orcaslicer.com/wiki) is still a genuinely useful reference for those. This fork doesn't have a separate wiki of its own yet.

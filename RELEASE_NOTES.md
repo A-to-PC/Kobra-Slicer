@@ -1,5 +1,21 @@
 # Kobra Slicer — Release Notes
 
+## v1.0.1 — 03/10/2026
+
+Small fix, no behaviour change for existing Kobra 3 Max users.
+
+### Fixed
+
+- The upload's own analytics/telemetry payload hardcoded `printer_type` to "Anycubic Kobra 3
+  Max" regardless of which printer was actually connected. It now reads the printer's own
+  real, self-reported model (from its `/info` response) instead, falling back to "Anycubic
+  Kobra 3 Max" if the printer doesn't report one. This doesn't change upload/print behaviour on
+  a K3M — it's a telemetry-accuracy fix, not a gate — but it's a step toward testing Kobra
+  Slicer against other printers in the Kobra range, since the printer upload path itself (same
+  Anycubic Link/MQTT protocol family) is shared across the lineup. Kobra X and others are not
+  yet confirmed working end-to-end; this just removes one known inaccuracy blocking an honest
+  test.
+
 ## v1.0.0 — 01/10/2026
 
 Kobra Slicer is an OrcaSlicer fork adding real, direct-from-slicer support for the Anycubic

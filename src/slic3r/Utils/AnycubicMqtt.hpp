@@ -53,8 +53,14 @@ public:
     // buried/PrintStart, info/net, getSliceParam) -- sent only *after* print/start is
     // accepted, matching the real client. Fire-and-forget; a failure here doesn't abort
     // anything.
+    // printer_type_name is the printer's own self-reported model (AnycubicLink::fetch_upload_url's
+    // modelName, read live from /info) -- not the slicer's selected profile, which can be wrong if
+    // the user sliced with a different printer's profile than the one they're actually uploading to.
+    // Falls back to "Anycubic Kobra 3 Max" if the printer didn't report one, matching every real
+    // capture this was reverse-engineered against so far.
     void send_startup_queries(const std::string &filename, const std::string &source_file_path,
-                               size_t filesize, const PrintTaskOptions &options);
+                               size_t filesize, const PrintTaskOptions &options,
+                               const std::string &printer_type_name = std::string());
 
     // The one thing the real client sends immediately before print/start: a single
     // lastWill/query. Fire-and-forget.
