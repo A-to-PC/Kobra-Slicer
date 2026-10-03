@@ -47,6 +47,10 @@ on:
         description: 'Only build dependencies (bypasses caching)'
         type: boolean
         default: false
+      skip-windows:
+        description: 'Skip the Windows build (this fork already builds/releases Windows locally)'
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -86,8 +90,9 @@ jobs:
             os: windows-latest
           - arch: arm64
             os: windows-11-arm
-    # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    # Don't run scheduled builds on forks. skip-windows: this fork builds/releases Windows
+    # locally (Inno Setup), so CI only needs to cover Linux/macOS unless explicitly asked.
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') && !inputs.skip-windows }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       # Self-hosted runner is x64-only; ARM64 always uses the GitHub-hosted runner.

@@ -384,6 +384,14 @@ bool read_one_mqtt_packet(asio::ssl::stream<asio::ip::tcp::socket> &stream, int 
 #ifdef _WIN32
     DWORD tv = static_cast<DWORD>(timeout_ms);
     setsockopt(sock.native_handle(), SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char *>(&tv), sizeof(tv));
+#else
+    // POSIX (macOS/Linux) takes a struct timeval, not a plain millisecond DWORD -- without this
+    // branch the timeout silently never gets set on non-Windows builds (compiles and runs fine,
+    // just means a hung read blocks forever instead of timing out).
+    struct timeval tv;
+    tv.tv_sec  = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    setsockopt(sock.native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 #endif
     boost::system::error_code ec;
 
