@@ -23,6 +23,8 @@
 #include "CrealityPrint.hpp"
 #include "../GUI/PrintHostDialogs.hpp"
 #include "../GUI/MainFrame.hpp"
+#include "../GUI/MsgDialog.hpp"
+#include <wx/utils.h>
 #include "Obico.hpp"
 #include "Flashforge.hpp"
 #include "SimplyPrint.hpp"
@@ -368,7 +370,35 @@ void PrintHostJobQueue::priv::perform_job(PrintHostJob the_job)
 
     if (success) {
         emit_progress(100);
-        if (the_job.switch_to_device_tab) {
+        if (the_job.switch_to_device_tab && dynamic_cast<AnycubicLink*>(the_job.printhost.get())) {
+            // Same "switch to device tab" checkbox as every other printer -- still respects
+            // the user's choice to skip this on a given send. The generic Device tab
+            // (MonitorPanel/StatusPanel) is built around Bambu's own cloud device model and
+            // doesn't represent this printer though, so open Kobra LAN Monitor's own live
+            // status/camera view in the system's default browser instead. Probe localhost:8899
+            // first (the app's own real default port, confirmed from its source) rather than
+            // assume it's running.
+            const std::string lan_monitor_url = "http://localhost:8899";
+            auto reachable = std::make_shared<bool>(false);
+            Http::get(lan_monitor_url)
+                .timeout_connect(1)
+                .timeout_max(2)
+                .on_complete([reachable](std::string, unsigned) { *reachable = true; })
+                .on_error([reachable](std::string, std::string, unsigned) { *reachable = false; })
+                .perform_sync();
+            if (*reachable) {
+                wxLaunchDefaultBrowser(lan_monitor_url);
+            } else {
+                wxTheApp->CallAfter([]() {
+                    MessageDialog msg(nullptr,
+                        _L("Kobra LAN Monitor isn't running, so live status and camera can't "
+                           "be shown. Install and start it to use this: "
+                           "https://github.com/A-to-PC/kobra-lan-monitor"),
+                        _L("Kobra LAN Monitor not found"), wxOK | wxICON_INFORMATION);
+                    msg.ShowModal();
+                });
+            }
+        } else if (the_job.switch_to_device_tab) {
             const auto mainframe = GUI::wxGetApp().mainframe;
             mainframe->request_select_tab(MainFrame::TabPosition::tpMonitor);
         }
