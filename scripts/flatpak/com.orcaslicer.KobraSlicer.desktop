@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Kobra Slicer
+GenericName=3D Printer Slicer
+Comment=Direct upload-and-print for the Anycubic Kobra 3 Max, on an OrcaSlicer base
+Exec=kobra-slicer %F
+Icon=com.orcaslicer.KobraSlicer
+Terminal=false
+Type=Application
+MimeType=model/stl;application/vnd.ms-3mfdocument;application/x-amf;model/3mf;
+Categories=Graphics;3DGraphics;Engineering;
+Keywords=3D;Printing;Slicer;FDM;Anycubic;Kobra;
+StartupWMClass=kobra-slicer

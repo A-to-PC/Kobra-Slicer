@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+    <id>com.orcaslicer.KobraSlicer</id>
+    <launchable type="desktop-id">com.orcaslicer.KobraSlicer.desktop</launchable>
+    <name>Kobra Slicer</name>
+    <summary>Direct upload-and-print for the Anycubic Kobra 3 Max, on an OrcaSlicer base</summary>
+    <developer id="com.atopc">
+        <name>A to PC</name>
+    </developer>
+    <url type="homepage">https://github.com/A-to-PC/Kobra-Slicer</url>
+    <url type="help">https://www.orcaslicer.com/wiki</url>
+    <url type="bugtracker">https://github.com/A-to-PC/Kobra-Slicer/issues/</url>
+    <url type="vcs-browser">https://github.com/A-to-PC/Kobra-Slicer</url>
+    <metadata_license>0BSD</metadata_license>
+    <project_license>AGPL-3.0-only</project_license>
+    <content_rating type="oars-1.1" />
+    <requires>
+        <display_length compare="gt">768</display_length>
+    </requires>
+    <recommends>
+        <control>keyboard</control>
+        <control>pointing</control>
+    </recommends>
+    <description>
+        <p>Kobra Slicer is an independent, unofficial fork of OrcaSlicer, built to add real,
+            working upload-and-print support for the Anycubic Kobra 3 Max over the printer's
+            own local LAN protocol, on completely stock firmware -- no Rinkhals or jailbreak
+            required.</p>
+        <p>Everything OrcaSlicer already does -- ultra-fast slicing, intelligent support
+            generation, advanced calibration tools -- stays intact. This fork adds a real,
+            dedicated Anycubic print host and Kobra 3 Max profiles on top of it, built from
+            genuine captured traffic rather than guesswork, including ACE Pro multi-colour
+            tray selection.</p>
+    </description>
+    <branding>
+        <color type="primary" scheme_preference="light">#009688</color>
+        <color type="primary" scheme_preference="dark">#00695C</color>
+    </branding>
+    <releases>
+        <release version="1.0.1" date="2026-10-03">
+            <url type="details">https://github.com/A-to-PC/Kobra-Slicer/releases/tag/v1.0.1</url>
+            <description>
+                <p>Reads the printer's own real, self-reported model for upload telemetry
+                    instead of a hardcoded Kobra 3 Max string -- a step toward testing against
+                    other printers in the Kobra range.</p>
+            </description>
+        </release>
+        <release version="1.0.0" date="2026-10-01">
+            <url type="details">https://github.com/A-to-PC/Kobra-Slicer/releases/tag/v1.0.0</url>
+            <description>
+                <p>First public release: real upload-and-print for the Anycubic Kobra 3 Max,
+                    confirmed end-to-end against real hardware, with ACE Pro multi-colour
+                    tool-changing and a Windows installer.</p>
+            </description>
+        </release>
+    </releases>
+</component>
