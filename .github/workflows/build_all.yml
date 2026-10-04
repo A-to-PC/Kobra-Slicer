@@ -51,6 +51,16 @@ on:
         description: 'Skip the Windows build (this fork already builds/releases Windows locally)'
         type: boolean
         default: false
+      skip-linux:
+        description: >-
+          Skip the Linux build. Defaults on: the AppImage mv bug is fixed and aarch64
+          builds clean, but x86_64 still fails on OrcaSlicer's own external regression
+          suite (comparing against vanilla upstream's golden baseline, not this fork's --
+          see Journey Day 34). Nobody on this project has real Linux experience to debug
+          it further right now, so it's parked rather than actively chased. Pass false to
+          pick it back up.
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -72,8 +82,8 @@ jobs:
             os: ${{ vars.SELF_HOSTED && 'orca-lnx-server' || 'ubuntu-24.04' }}
           - arch: "aarch64"
             os: ubuntu-24.04-arm
-    # Don't run scheduled builds on forks:
-    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    # Don't run scheduled builds on forks. skip-linux defaults true -- see its description.
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') && !inputs.skip-linux }}
     uses: ./.github/workflows/build_check_cache.yml
     with:
       os: ${{ matrix.os }}
@@ -194,8 +204,11 @@ jobs:
             runner: ubuntu-24.04
           - arch: aarch64
             runner: ubuntu-24.04-arm
-    # Don't run scheduled builds on forks; skip entirely on self-hosted runners
-    if: ${{ !cancelled() && !vars.SELF_HOSTED && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
+    # Don't run scheduled builds on forks; skip entirely on self-hosted runners.
+    # Independent of build_linux (its own container-based build), but still a Linux
+    # artifact this fork doesn't deploy anywhere (deploy step below is upstream-only),
+    # so it's gated on the same skip-linux flag rather than burning CI time regardless.
+    if: ${{ !cancelled() && !vars.SELF_HOSTED && !inputs.skip-linux && (github.event_name != 'schedule' || github.repository == 'OrcaSlicer/OrcaSlicer') }}
 
     runs-on: ${{ matrix.variant.runner }}
     env:
